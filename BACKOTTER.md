@@ -10,8 +10,17 @@ than merged.
 
 - `[patch.crates-io]` in Cargo.toml, which swaps crates.io's rustic_core for
   BackOtter's. Cargo.lock pins the exact commit.
+- Restoring `SNAP:subfolder` gives the destination directory the
+  subfolder's own metadata, as everything below it gets its own; stock
+  rustic leaves the destination as it was, so a restored file system's root
+  keeps mkfs's mode and has no SELinux label.
 - The version reads `X.Y.Z+backotter.N`, so `rustic --version` and every
   snapshot's program version say which build made it.
+
+For a backup and restore as BackOtter's restic does them, pass `backup
+--set-atime yes` (rustic keeps the mtime as the atime by default) and
+`restore --numeric-id` (by default rustic looks owners up by name, in the
+users of the system it runs on).
 
 ## Building
 

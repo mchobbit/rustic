@@ -8,7 +8,9 @@ use abscissa_core::{Command, Runnable, Shutdown};
 use anyhow::Result;
 use log::{debug, info};
 
-use rustic_core::{LocalDestination, LsOptions, RestoreOptions};
+use std::path::PathBuf;
+
+use rustic_core::{LocalDestination, LsOptions, RestoreOptions, repofile::Metadata};
 
 use crate::filtering::SnapshotFilter;
 
@@ -65,7 +67,15 @@ impl RestoreCmd {
         // for restore, always recurse into tree
         let mut ls_opts = self.ls_opts.clone();
         ls_opts.recursive = true;
-        let ls = repo.ls(&node, &ls_opts)?;
+        // BackOtter: restoring "ID:subfolder" gives the destination the
+        // subfolder's own metadata, as everything below it gets its own:
+        // the subfolder's node goes first, as the destination itself (an
+        // empty path). Without it a restored file system's root keeps
+        // mkfs's mode and has no SELinux label. A whole snapshot has no node
+        // of its own (empty metadata), and leaves the destination as it is.
+        let target = (node.is_dir() && node.meta != Metadata::default())
+            .then(|| (PathBuf::new(), node.clone()));
+        let ls = target.clone().into_iter().map(Ok).chain(repo.ls(&node, &ls_opts)?);
 
         let dest = LocalDestination::new(&self.dest, true, !node.is_dir())?;
 
@@ -102,7 +112,7 @@ impl RestoreCmd {
             // save some memory
             let repo = repo.drop_data_from_index();
 
-            let ls = repo.ls(&node, &ls_opts)?;
+            let ls = target.into_iter().map(Ok).chain(repo.ls(&node, &ls_opts)?);
             repo.restore(restore_infos, &self.opts, ls, &dest)?;
             println!("restore done.");
         } else {
