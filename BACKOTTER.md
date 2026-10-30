@@ -17,10 +17,18 @@ than merged.
 - The version reads `X.Y.Z+backotter.N`, so `rustic --version` and every
   snapshot's program version say which build made it.
 
-For a backup and restore as BackOtter's restic does them, pass `backup
---set-atime yes` (rustic keeps the mtime as the atime by default) and
-`restore --numeric-id` (by default rustic looks owners up by name, in the
-users of the system it runs on).
+Backups and restores work as BackOtter's restic does them, by default (see
+BACKOTTER.md in rustic_core):
+
+- `backup` keeps each file's access time; stock rustic stores the mtime
+  there, as `--set-atime mtime` still does. `config/full.toml` shows the new
+  default.
+- `restore` gives files the uid and gid they were saved with; stock rustic
+  looks owners up by name, in the users of the system it runs on, as
+  `--by-name` still does. `--numeric-id` is accepted, and changes nothing.
+- `restore` makes files that had holes sparse again and writes out every
+  byte of any other, so that preallocated files come back allocated;
+  `--sparse by-content` makes every file sparse, as in stock rustic.
 
 ## Building
 
