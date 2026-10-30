@@ -1,6 +1,6 @@
 [package]
 name = "rustic-rs"
-version = "0.11.4"
+version = "0.11.4+backotter.1"
 authors = ["the rustic-rs team"]
 categories = ["command-line-utilities"]
 documentation = "https://docs.rs/rustic-rs"
@@ -215,3 +215,7 @@ codegen-units = 1
 assets = [
   { source = "target/release/rustic", dest = "/usr/bin/rustic", mode = "0755", config = false, doc = false, user = "root", group = "root" },
 ]
+
+# BackOtter's rustic_core (BACKOTTER.md); Cargo.lock pins the commit.
+[patch.crates-io]
+rustic_core = { git = "https://github.com/mchobbit/rustic_core.git", branch = "backotter" }
