@@ -22,17 +22,42 @@ BACKOTTER.md in rustic_core):
 
 - `backup` keeps each file's access time; stock rustic stores the mtime
   there, as `--set-atime mtime` still does. `config/full.toml` shows the new
-  default.
+  default. On Linux the backup reads files and directories without changing
+  their access times (`O_NOATIME`, where it may). `rewrite` keeps the
+  saved access times too.
 - `restore` gives files the uid and gid they were saved with; stock rustic
   looks owners up by name, in the users of the system it runs on, as
-  `--by-name` still does. `--numeric-id` is accepted, and changes nothing.
-- `restore` makes files that had holes sparse again and writes out every
-  byte of any other, so that preallocated files come back allocated;
-  `--sparse by-content` makes every file sparse, as in stock rustic.
+  `--by-name` (or `--ownership-by-name`, restic's name for it) still does.
+  `--numeric-id` is accepted, and changes nothing.
+- `restore` makes files that had holes sparse again, where it restores them
+  into new files, and allocates every other file in full, zeros and all,
+  so that swap files and preallocated files come back allocated; files
+  restored over existing ones are never made sparse. `--sparse by-content`
+  makes every new file sparse, as in stock rustic.
 
 ## Building
 
     ./build-backotter.sh [TARGET ...]     # default: this machine's target
+
+It refuses to build unless Cargo.lock pins rustic_core at the version it
+names (`bko_core`, now 0.13.0+backotter.2) and rustic_core's walkdir (see
+BACKOTTER.md there). Until rustic_core's `backotter` branch with that
+version is pushed, Cargo.lock pins its commit fcac5fa (0.13.0+backotter.1),
+so the build stops there. Once it is pushed:
+
+1. Add `walkdir = { git = "https://github.com/mchobbit/rustic_core.git",
+   branch = "backotter" }` to `[patch.crates-io]` in Cargo.toml. It can't
+   go in before the push: cargo would look for walkdir in the pinned
+   commit, which hasn't got it.
+2. Run `cargo update -p rustic_core -p walkdir`.
+3. Commit Cargo.lock.
+4. When rustic_core's version changes, change `bko_core` in
+   build-backotter.sh to match.
+
+To build against a local copy of rustic_core instead (for tests), point
+both entries of `[patch.crates-io]` at its paths (`crates/core` and
+`vendor/walkdir`) and run `cargo update -p rustic_core -p walkdir`, in a
+copy of this repository.
 
 Builds with rustic's default features, which leave out `self-update`, so
 there is no command to replace this build with stock rustic. Binaries go to

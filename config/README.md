@@ -256,8 +256,10 @@ can be overwritten in the source-specific configuration, see below.
 | stdin-filename     | File name to be used when reading from stdin.                                                                  | Not set                  |               | --stdin-filename        |
 | tags               | Array of tags for the backup.                                                                                  | []                       |               | --tag                   |
 | time               | Set the time saved in the snapshot.                                                                            | current time             |               | --time                  |
-| with-atime         | If true, includes file access time (atime) in the backup.                                                      | false                    |               | --with-atime            |
-| with-devid         | Determines whether to include the device ID in the backup. Allowed values are `always`, `never` or `hardlink`. | "hardlink"               | "always"      | --with-devid            |
+| set-atime          | Set access time: "yes" (the file's own), "mtime" or "no".                                                      | "yes"                    |               | --set-atime             |
+| set-ctime          | Set change time: "yes" (the file's own), "mtime" or "no".                                                      | "yes"                    |               | --set-ctime             |
+| set-devid          | Set device ID: "yes", "no" or "hardlink" (only for hard-linked files).                                         | "hardlink"               | "yes"         | --set-devid             |
+| set-xattrs         | Set extended attributes: "yes" or "no".                                                                        | "yes"                    |               | --set-xattrs            |
 | metrics-job        | jobname used when pushing metrics (if global prometheus or opentelemetry option is set)                        | "rustic-backup"          | "myjob"       | --metrics-job           |
 
 ### Backup Hooks `[backup.hooks]`
