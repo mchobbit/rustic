@@ -64,9 +64,17 @@ there is no command to replace this build with stock rustic. Binaries go to
 `dist/`, named `rustic-backotter-VERSION-TARGET`.
 
 Unlike Go, Rust needs the target's C library and linker to build for another
-system. Build the FreeBSD, OpenBSD and illumos binaries on those systems
-(OpenBSD has no prebuilt Rust standard library for cross builds), or for
-FreeBSD and illumos with a cross toolchain such as `cross`.
+system. Build the FreeBSD, OpenBSD, NetBSD and illumos binaries on those
+systems (OpenBSD has no prebuilt Rust standard library for cross builds;
+NetBSD's pkgsrc has Rust), or for FreeBSD and illumos with a cross toolchain
+such as `cross`. AlpineBSD runs the NetBSD binary.
+
+DragonFly's own Rust (dports) is too old for rustic, and
+x86_64-unknown-dragonfly is a tier 3 target without a prebuilt standard
+library: build it with nightly and `-Zbuild-std`, against a sysroot and
+linker for DragonFly. Cargo.lock has rustix 1.1.6 rather than 1.1.4 for it:
+1.1.4 wants source-specific multicast socket options for DragonFly that
+libc doesn't have there, and doesn't build.
 
 ## Moving to a new rustic release
 
