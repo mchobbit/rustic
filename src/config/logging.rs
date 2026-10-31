@@ -101,18 +101,21 @@ impl LoggingOptions {
             );
         }
 
+        // BackOtter: jiff warns each time it looks for the system's time
+        // zone and finds none, hundreds of times in a backup;
+        // `report_time_zone` says it once. Its log is there when asked for.
+        let level_filter_jiff = if level_filter_dependencies > LevelFilter::Warn {
+            level_filter_dependencies
+        } else {
+            level_filter_dependencies.min(LevelFilter::Error)
+        };
+
         let root = root_builder.build(level_filter_dependencies);
         let config = config_builder
             .logger(Logger::builder().build("rustic_rs", LevelFilter::Trace))
             .logger(Logger::builder().build("rustic_core", LevelFilter::Trace))
             .logger(Logger::builder().build("rustic_backend", LevelFilter::Trace))
-            // BackOtter: jiff warns each time it looks for the system's time
-            // zone and finds none, hundreds of times in a backup;
-            // `report_time_zone` says it once.
-            .logger(Logger::builder().build(
-                JIFF_SYSTEM_TIME_ZONE,
-                level_filter_dependencies.min(LevelFilter::Error),
-            ))
+            .logger(Logger::builder().build(JIFF, level_filter_jiff))
             .build(root)?;
         Ok(config)
     }
@@ -133,23 +136,30 @@ impl LoggingOptions {
 
 // BackOtter: time zones.
 
-/// The module of jiff's `TimeZone::system`, which warns each time it finds
-/// no time zone and falls back to UTC (`Etc/Unknown`).
-const JIFF_SYSTEM_TIME_ZONE: &str = "jiff::tz::timezone";
+/// jiff's log, whose warnings are all about time zones: each time
+/// `TimeZone::system` finds none and falls back to UTC (`Etc/Unknown`), and
+/// once when there is no time zone database (`/usr/share/zoneinfo`).
+const JIFF: &str = "jiff";
+
+/// Where Unix keeps the system's time zone, when it has one.
+const LOCALTIME: &str = "/etc/localtime";
 
 /// Says once that times are in UTC for want of a time zone, which jiff would
 /// warn about each time it looks for one (silenced in
-/// [`LoggingOptions::config`]). With `TZ` unset that is no news, only for
-/// the debug log: FreeBSD, among others, installs without `/etc/localtime`,
-/// as a rescue system may run, and its own tools use UTC then too. A `TZ`
-/// that jiff doesn't understand is warned about.
+/// [`LoggingOptions::config`]). A system without one, `TZ` unset and no
+/// `/etc/localtime` (FreeBSD installs without it, as a rescue system may
+/// run), is no news, only for the debug log: its own tools use UTC then
+/// too. A `TZ` or `/etc/localtime` that jiff can't read is warned about.
 pub fn report_time_zone() {
     let Err(err) = TimeZone::try_system() else {
         return;
     };
-    match std::env::var_os("TZ") {
-        Some(tz) => warn!("TZ={tz:?} not understood, times are in UTC: {err}"),
-        None => debug!("no system time zone, times are in UTC: {err}"),
+    if let Some(tz) = std::env::var_os("TZ") {
+        warn!("TZ={tz:?} not understood, times are in UTC: {err}");
+    } else if std::fs::symlink_metadata(LOCALTIME).is_ok() {
+        warn!("{LOCALTIME} not understood, times are in UTC: {err}");
+    } else {
+        debug!("no system time zone, times are in UTC: {err}");
     }
 }
 
@@ -181,7 +191,7 @@ mod tests {
         config
             .loggers()
             .iter()
-            .find(|logger| logger.name() == JIFF_SYSTEM_TIME_ZONE)
+            .find(|logger| logger.name() == JIFF)
             .unwrap()
             .level()
     }
@@ -195,9 +205,9 @@ mod tests {
         };
         assert_eq!(jiff_level(&options), LevelFilter::Off);
         let options = LoggingOptions {
-            log_level_dependencies: Some("trace".to_string()),
+            log_level_dependencies: Some("info".to_string()),
             ..Default::default()
         };
-        assert_eq!(jiff_level(&options), LevelFilter::Error);
+        assert_eq!(jiff_level(&options), LevelFilter::Info);
     }
 }
