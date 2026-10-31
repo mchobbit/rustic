@@ -31,8 +31,9 @@ BACKOTTER.md in rustic_core):
 - `backup` keeps each file's access time; stock rustic stores the mtime
   there, as `--set-atime mtime` still does. `config/full.toml` shows the new
   default. On Linux the backup reads files and directories without changing
-  their access times (`O_NOATIME`, where it may). `rewrite` keeps the
-  saved access times too.
+  their access times (`O_NOATIME`, where it may), except symlinks':
+  `readlink(2)` moves them, with no way around it, though the snapshot
+  keeps the earlier ones. `rewrite` keeps the saved access times too.
 - `restore` gives files the uid and gid they were saved with; stock rustic
   looks owners up by name, in the users of the system it runs on, as
   `--by-name` (or `--ownership-by-name`, restic's name for it) still does.
@@ -42,6 +43,10 @@ BACKOTTER.md in rustic_core):
   so that swap files and preallocated files come back allocated; files
   restored over existing ones are never made sparse. `--sparse by-content`
   makes every new file sparse, as in stock rustic.
+- `restore` over an existing tree replaces what is in the way of another
+  type, with or without `--delete`: a symlink where the snapshot has a
+  directory becomes the directory again; stock rustic restored the
+  directory's files through the symlink, wherever it pointed.
 
 ## Building
 
