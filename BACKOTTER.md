@@ -16,6 +16,11 @@ than merged.
   keeps mkfs's mode and has no SELinux label.
 - The version reads `X.Y.Z+backotter.N`, so `rustic --version` and every
   snapshot's program version say which build made it.
+- Without a time zone (no `/etc/localtime`, as FreeBSD and DragonFly
+  install, and `TZ` unset) times are in UTC with no warning (the debug log
+  says so). jiff warned each time it looked for the time zone, for every
+  time in every node: hundreds of warnings in a backup. A `TZ` that jiff
+  doesn't understand gets one warning, and UTC.
 
 Backups and restores work as BackOtter's restic does them, by default (see
 BACKOTTER.md in rustic_core):

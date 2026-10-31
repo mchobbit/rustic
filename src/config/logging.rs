@@ -3,7 +3,8 @@ use std::{path::PathBuf, sync::OnceLock};
 use anyhow::Result;
 use clap::{Parser, ValueHint};
 use conflate::Merge;
-use log::LevelFilter;
+use jiff::tz::TimeZone;
+use log::{LevelFilter, debug, warn};
 use log4rs::{
     Handle,
     append::{
@@ -105,6 +106,13 @@ impl LoggingOptions {
             .logger(Logger::builder().build("rustic_rs", LevelFilter::Trace))
             .logger(Logger::builder().build("rustic_core", LevelFilter::Trace))
             .logger(Logger::builder().build("rustic_backend", LevelFilter::Trace))
+            // BackOtter: jiff warns each time it looks for the system's time
+            // zone and finds none, hundreds of times in a backup;
+            // `report_time_zone` says it once.
+            .logger(Logger::builder().build(
+                JIFF_SYSTEM_TIME_ZONE,
+                level_filter_dependencies.min(LevelFilter::Error),
+            ))
             .build(root)?;
         Ok(config)
     }
@@ -120,6 +128,28 @@ impl LoggingOptions {
             _ = HANDLE.set(handle);
         }
         Ok(())
+    }
+}
+
+// BackOtter: time zones.
+
+/// The module of jiff's `TimeZone::system`, which warns each time it finds
+/// no time zone and falls back to UTC (`Etc/Unknown`).
+const JIFF_SYSTEM_TIME_ZONE: &str = "jiff::tz::timezone";
+
+/// Says once that times are in UTC for want of a time zone, which jiff would
+/// warn about each time it looks for one (silenced in
+/// [`LoggingOptions::config`]). With `TZ` unset that is no news, only for
+/// the debug log: FreeBSD, among others, installs without `/etc/localtime`,
+/// as a rescue system may run, and its own tools use UTC then too. A `TZ`
+/// that jiff doesn't understand is warned about.
+pub fn report_time_zone() {
+    let Err(err) = TimeZone::try_system() else {
+        return;
+    };
+    match std::env::var_os("TZ") {
+        Some(tz) => warn!("TZ={tz:?} not understood, times are in UTC: {err}"),
+        None => debug!("no system time zone, times are in UTC: {err}"),
     }
 }
 
@@ -139,5 +169,35 @@ impl log4rs::append::Append for PbPauseAppender {
         // But that's not necessary right now, so we just call flush directly
         // to avoid unnecessary suspends.
         self.0.flush();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn jiff_level(options: &LoggingOptions) -> LevelFilter {
+        let config = options.config(false).unwrap();
+        config
+            .loggers()
+            .iter()
+            .find(|logger| logger.name() == JIFF_SYSTEM_TIME_ZONE)
+            .unwrap()
+            .level()
+    }
+
+    #[test]
+    fn jiffs_time_zone_warnings_silenced() {
+        assert_eq!(jiff_level(&LoggingOptions::default()), LevelFilter::Error);
+        let options = LoggingOptions {
+            log_level_dependencies: Some("off".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(jiff_level(&options), LevelFilter::Off);
+        let options = LoggingOptions {
+            log_level_dependencies: Some("trace".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(jiff_level(&options), LevelFilter::Error);
     }
 }

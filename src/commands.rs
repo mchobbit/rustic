@@ -297,6 +297,7 @@ impl Configurable<RusticConfig> for EntryPoint {
             for (level, merge_log) in merge_logs {
                 log!(level, "{merge_log}");
             }
+            crate::config::logging::report_time_zone();
         }
 
         match &self.commands {
