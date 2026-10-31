@@ -38,11 +38,18 @@ BACKOTTER.md in rustic_core):
   looks owners up by name, in the users of the system it runs on, as
   `--by-name` (or `--ownership-by-name`, restic's name for it) still does.
   `--numeric-id` is accepted, and changes nothing.
+- `backup` skips Unix sockets and `restore` leaves out the socket nodes
+  of older snapshots, as restic does (see BACKOTTER.md in rustic_core).
+- `backup` reads files with holes by their data extents (`SEEK_DATA`,
+  `SEEK_HOLE`, on Linux, FreeBSD, macOS and illumos) and gives the chunker
+  zeros for the holes without reading them: the same bytes as plain
+  reading, so the same chunks and snapshots.
 - `restore` makes files that had holes sparse again, where it restores them
-  into new files, and allocates every other file in full, zeros and all,
-  so that swap files and preallocated files come back allocated; files
-  restored over existing ones are never made sparse. `--sparse by-content`
-  makes every new file sparse, as in stock rustic.
+  into new files: each blob is written but for its all-zero blocks of the
+  file system, which stay holes. It allocates every other file in full,
+  zeros and all, so that swap files and preallocated files come back
+  allocated; files restored over existing ones are never made sparse.
+  `--sparse by-content` makes every new file sparse, as in stock rustic.
 - `restore` over an existing tree replaces what is in the way of another
   type, with or without `--delete`: a symlink where the snapshot has a
   directory becomes the directory again; stock rustic restored the
@@ -53,7 +60,7 @@ BACKOTTER.md in rustic_core):
     ./build-backotter.sh [TARGET ...]     # default: this machine's target
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.2) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.3) and rustic_core's walkdir (see
 BACKOTTER.md there). Until rustic_core's `backotter` branch with that
 version is pushed, Cargo.lock pins its commit fcac5fa (0.13.0+backotter.1),
 so the build stops there. Once it is pushed:
