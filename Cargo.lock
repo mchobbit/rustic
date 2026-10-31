@@ -5677,7 +5677,7 @@ dependencies = [
 
 [[package]]
 name = "rustic-rs"
-version = "0.11.4+backotter.2"
+version = "0.11.4+backotter.3"
 dependencies = [
  "abscissa_core",
  "anyhow",

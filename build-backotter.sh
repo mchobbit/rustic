@@ -10,7 +10,7 @@ version=$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
 # The lock must pin BackOtter's rustic_core of this version, and its
 # walkdir (BACKOTTER.md, "Building"): until rustic_core's backotter branch is
 # pushed and the lock refreshed, it pins an older one and crates.io's walkdir.
-bko_core=0.13.0+backotter.2
+bko_core=0.13.0+backotter.3
 locked() {  # the version and source Cargo.lock records for package $1
     awk -v name="$1" '$0 == "name = \"" name "\"" {p = 1; next}
         p && /^version = / {gsub(/"/, "", $3); v = $3}
