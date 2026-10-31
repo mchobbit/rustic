@@ -19,8 +19,11 @@ than merged.
 - Without a time zone (no `/etc/localtime`, as FreeBSD and DragonFly
   install, and `TZ` unset) times are in UTC with no warning (the debug log
   says so). jiff warned each time it looked for the time zone, for every
-  time in every node: hundreds of warnings in a backup. A `TZ` that jiff
-  doesn't understand gets one warning, and UTC.
+  time in every node: hundreds of warnings in a backup, and once more
+  where there is no `/usr/share/zoneinfo` (AlpineBSD). Its warnings are
+  all about time zones, and now go to the log only with
+  `--log-level-dependencies` above `warn`. A `TZ` or `/etc/localtime` that
+  jiff can't read gets one warning, and UTC.
 
 Backups and restores work as BackOtter's restic does them, by default (see
 BACKOTTER.md in rustic_core):
