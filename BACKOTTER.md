@@ -98,6 +98,19 @@ Builds with rustic's default features, which leave out `self-update`, so
 there is no command to replace this build with stock rustic. Binaries go to
 `dist/`, named `rustic-backotter-VERSION-TARGET`.
 
+Linux (glibc) binaries are linked statically (`-C target-feature=+crt-static`,
+a static PIE with no program interpreter; the script refuses one that has
+one), as BackOtter's restic is: a dynamic one needs
+`/lib64/ld-linux-x86-64.so.2` and a glibc at least as new as the one it was
+built against, and NixOS has only a stub loader there that refuses to start
+it. glibc warns at the link that `getaddrinfo`, `getpwnam` and the like
+need its shared libraries at run time; since glibc 2.34 the `files` and
+`dns` sources are built into the static library, so host names (from
+`/etc/hosts` and DNS) and user and group names (from `/etc/passwd` and
+`/etc/group`) still resolve, as with restic's pure-Go resolver and user
+lookup, but sources that need a module loaded (LDAP, sssd, systemd-resolved's
+`resolve`, `mymachines`) don't; nsswitch.conf goes on to the next source.
+
 Unlike Go, Rust needs the target's C library and linker to build for another
 system. Build the FreeBSD, OpenBSD, NetBSD and illumos binaries on those
 systems (OpenBSD has no prebuilt Rust standard library for cross builds;
