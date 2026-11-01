@@ -51,9 +51,10 @@ BACKOTTER.md in rustic_core):
   allocates every other file in full, zeros and all, so that swap files
   and preallocated files come back allocated; files restored over
   existing ones are never made sparse. `--sparse by-content` makes every
-  new file sparse, as in stock rustic. Files backed up from Linux's JFS or
-  nilfs2, whose `SEEK_HOLE` finds no hole before the end, aren't marked as
-  having holes and come back allocated in full, in both tools alike.
+  new file sparse, as in stock rustic. On Linux's JFS and nilfs2, whose
+  `SEEK_HOLE` finds no hole before the end, the blocks decide which files
+  have holes (fewer blocks than the size), as in BackOtter's restic; such a
+  file is backed up by plain reading, holes and all, and comes back sparse.
 - `restore` over an existing tree replaces what is in the way of another
   type, with or without `--delete`: a symlink where the snapshot has a
   directory becomes the directory again; stock rustic restored the
