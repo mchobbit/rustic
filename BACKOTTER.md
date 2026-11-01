@@ -66,17 +66,13 @@ BACKOTTER.md in rustic_core):
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
 names (`bko_core`, now 0.13.0+backotter.3) and rustic_core's walkdir (see
-BACKOTTER.md there). Until rustic_core's `backotter` branch with that
-version is pushed, Cargo.lock pins its commit fcac5fa (0.13.0+backotter.1),
-so the build stops there. Once it is pushed:
+BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
+rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
+rustic_core's `backotter` branch moves:
 
-1. Add `walkdir = { git = "https://github.com/mchobbit/rustic_core.git",
-   branch = "backotter" }` to `[patch.crates-io]` in Cargo.toml. It can't
-   go in before the push: cargo would look for walkdir in the pinned
-   commit, which hasn't got it.
-2. Run `cargo update -p rustic_core -p walkdir`.
-3. Commit Cargo.lock.
-4. When rustic_core's version changes, change `bko_core` in
+1. Run `cargo update -p rustic_core -p walkdir`.
+2. Commit Cargo.lock.
+3. When rustic_core's version changes, change `bko_core` in
    build-backotter.sh to match.
 
 To build against a local copy of rustic_core instead (for tests), point

@@ -219,3 +219,4 @@ assets = [
 # BackOtter's rustic_core (BACKOTTER.md); Cargo.lock pins the commit.
 [patch.crates-io]
 rustic_core = { git = "https://github.com/mchobbit/rustic_core.git", branch = "backotter" }
+walkdir = { git = "https://github.com/mchobbit/rustic_core.git", branch = "backotter" }
