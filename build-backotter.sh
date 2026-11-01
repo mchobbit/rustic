@@ -32,10 +32,21 @@ targets=("$@")
 
 mkdir -p dist
 for t in "${targets[@]}"; do
+    # Linux (glibc) builds are linked statically, as restic-bko is: a
+    # dynamic one needs /lib64/ld-linux-x86-64.so.2 and the glibc it was
+    # built against, which NixOS (a stub loader) and older systems don't
+    # give it (BACKOTTER.md, "Building").  With --target, the flag reaches
+    # only the target's code, not build scripts or proc macros.
+    flags=${RUSTFLAGS:-}
+    [[ $t == *-linux-gnu* ]] && flags="${flags:+$flags }-C target-feature=+crt-static"
     # Default features: not "release", which adds self-update, which would
     # replace this build with stock rustic.  Without PROJECT_VERSION, which
     # rustic's own build.sh sets from git describe, the version is Cargo's.
-    env -u PROJECT_VERSION cargo build --release --locked --target "$t"
+    env -u PROJECT_VERSION RUSTFLAGS="$flags" cargo build --release --locked --target "$t"
+    if [[ $t == *-linux-gnu* ]] && readelf -l "target/$t/release/rustic" | grep -q 'program interpreter'; then
+        echo "build-backotter: target/$t/release/rustic is linked dynamically" >&2
+        exit 1
+    fi
     out=dist/rustic-backotter-$version-$t
     cp "target/$t/release/rustic" "$out"
     echo "$out"
