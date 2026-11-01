@@ -33,7 +33,12 @@ BACKOTTER.md in rustic_core):
   default. On Linux the backup reads files and directories without changing
   their access times (`O_NOATIME`, where it may), except symlinks':
   `readlink(2)` moves them, with no way around it, though the snapshot
-  keeps the earlier ones. `rewrite` keeps the saved access times too.
+  keeps the earlier ones. Elsewhere (FreeBSD and the other BSDs, illumos,
+  Haiku), with no `O_NOATIME`, listing a directory moves its access time:
+  the backup takes a directory's metadata before it lists it, and doesn't
+  scan the source for its size first (as `--no-scan`: no total or ETA), so
+  that the snapshot has the access times from before the backup, as in
+  BackOtter's restic. `rewrite` keeps the saved access times too.
 - `restore` gives files the uid and gid they were saved with; stock rustic
   looks owners up by name, in the users of the system it runs on, as
   `--by-name` (or `--ownership-by-name`, restic's name for it) still does.
@@ -59,6 +64,15 @@ BACKOTTER.md in rustic_core):
   type, with or without `--delete`: a symlink where the snapshot has a
   directory becomes the directory again; stock rustic restored the
   directory's files through the symlink, wherever it pointed.
+- `restore` over an existing tree first clears the flags that would refuse
+  it on what it finds there (immutable, append-only, undeletable: FreeBSD's
+  `schg`, `sappnd`, `sunlnk` and the rest, Linux's `i` and `a`), and gives
+  every file its snapshot's flags last, so a restore over an installed
+  FreeBSD puts its `schg` libc back as it was. A file whose contents can't
+  be written is reported once, the rest is restored, and the restore exits
+  1, as BackOtter's restic does; stock rustic panicked.
+- FreeBSD's ZFS project IDs (`zfs project`) are kept and restored
+  (`freebsd.zfs_project`), as on illumos.
 
 ## Building
 
