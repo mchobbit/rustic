@@ -8,8 +8,8 @@ cd "$(dirname "$0")"
 version=$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
 [[ $version == *+backotter.* ]] || { echo "build-backotter: version is '$version', not X.Y.Z+backotter.N" >&2; exit 1; }
 # The lock must pin BackOtter's rustic_core of this version, and its
-# walkdir (BACKOTTER.md, "Building"): until rustic_core's backotter branch is
-# pushed and the lock refreshed, it pins an older one and crates.io's walkdir.
+# walkdir (BACKOTTER.md, "Building"): after rustic_core's version changes,
+# cargo update -p rustic_core -p walkdir refreshes the lock.
 bko_core=0.13.0+backotter.3
 locked() {  # the version and source Cargo.lock records for package $1
     awk -v name="$1" '$0 == "name = \"" name "\"" {p = 1; next}
