@@ -45,11 +45,13 @@ BACKOTTER.md in rustic_core):
   zeros for the holes without reading them: the same bytes as plain
   reading, so the same chunks and snapshots.
 - `restore` makes files that had holes sparse again, where it restores them
-  into new files: each blob is written but for its all-zero blocks of the
-  file system, which stay holes. It allocates every other file in full,
-  zeros and all, so that swap files and preallocated files come back
-  allocated; files restored over existing ones are never made sparse.
-  `--sparse by-content` makes every new file sparse, as in stock rustic.
+  into new files: of each file system block a blob reaches into, the part
+  inside the blob is written only if it isn't all zeros, so a block is
+  allocated only where the file has data, as in BackOtter's restic. It
+  allocates every other file in full, zeros and all, so that swap files
+  and preallocated files come back allocated; files restored over
+  existing ones are never made sparse. `--sparse by-content` makes every
+  new file sparse, as in stock rustic.
 - `restore` over an existing tree replaces what is in the way of another
   type, with or without `--delete`: a symlink where the snapshot has a
   directory becomes the directory again; stock rustic restored the
