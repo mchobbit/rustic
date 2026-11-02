@@ -45,6 +45,12 @@ BACKOTTER.md in rustic_core):
   `--numeric-id` is accepted, and changes nothing.
 - `backup` skips Unix sockets and `restore` leaves out the socket nodes
   of older snapshots, as restic does (see BACKOTTER.md in rustic_core).
+- `backup` stores the directories above the backed-up path (`/home` in a
+  backup of `/home/m`) with their own metadata, as restic does, so a
+  restore of the whole snapshot gives them their own mode, owner and
+  times; stock rustic stored them as `0755` with no owner or times. It
+  leaves out a device node's device number where it is 0, as restic does
+  (see BACKOTTER.md in rustic_core).
 - `backup` reads files with holes by their data extents (`SEEK_DATA`,
   `SEEK_HOLE`, on Linux, FreeBSD, macOS and illumos) and gives the chunker
   zeros for the holes without reading them: the same bytes as plain
