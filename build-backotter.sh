@@ -40,7 +40,10 @@ for t in "${targets[@]}"; do
     # a file's owner has no name on a host with systemd in nsswitch.conf.
     # musl, like Go without cgo, reads /etc/passwd, /etc/group and
     # /etc/hosts itself (BACKOTTER.md, "Building").  musl's malloc is slow
-    # with many threads, so musl builds take mimalloc.  A *-linux-gnu build
+    # with many threads, so musl builds take mimalloc: without it a backup
+    # took 26% longer (round 23: 5.1 s, not 4.0 s, for a 35,000-path tree),
+    # though with a sixth of the memory (0.2 GB, not 1.2 GB; BACKOTTER.md,
+    # "Building").  A *-linux-gnu build
     # is static PIE (+crt-static); with --target, the flag reaches only the
     # target's code, not build scripts or proc macros.
     flags=${RUSTFLAGS:-} features=()
