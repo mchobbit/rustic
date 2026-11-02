@@ -32,18 +32,25 @@ targets=("$@")
 
 mkdir -p dist
 for t in "${targets[@]}"; do
-    # Linux (glibc) builds are linked statically, as restic-bko is: a
-    # dynamic one needs /lib64/ld-linux-x86-64.so.2 and the glibc it was
-    # built against, which NixOS (a stub loader) and older systems don't
-    # give it (BACKOTTER.md, "Building").  With --target, the flag reaches
-    # only the target's code, not build scripts or proc macros.
-    flags=${RUSTFLAGS:-}
+    # Linux builds are static, as restic-bko is: a dynamic one needs
+    # /lib64/ld-linux-x86-64.so.2 and the glibc it was built against, which
+    # NixOS (a stub loader) and older systems don't give it.  BackOtter's
+    # Linux target is x86_64-unknown-linux-musl, static by default: a static
+    # glibc still loads NSS modules for names, and dies (SIGFPE) in one when
+    # a file's owner has no name on a host with systemd in nsswitch.conf.
+    # musl, like Go without cgo, reads /etc/passwd, /etc/group and
+    # /etc/hosts itself (BACKOTTER.md, "Building").  musl's malloc is slow
+    # with many threads, so musl builds take mimalloc.  A *-linux-gnu build
+    # is static PIE (+crt-static); with --target, the flag reaches only the
+    # target's code, not build scripts or proc macros.
+    flags=${RUSTFLAGS:-} features=()
     [[ $t == *-linux-gnu* ]] && flags="${flags:+$flags }-C target-feature=+crt-static"
+    [[ $t == *-linux-musl* ]] && features=(--features mimalloc)
     # Default features: not "release", which adds self-update, which would
     # replace this build with stock rustic.  Without PROJECT_VERSION, which
     # rustic's own build.sh sets from git describe, the version is Cargo's.
-    env -u PROJECT_VERSION RUSTFLAGS="$flags" cargo build --release --locked --target "$t"
-    if [[ $t == *-linux-gnu* ]] && readelf -l "target/$t/release/rustic" | grep -q 'program interpreter'; then
+    env -u PROJECT_VERSION RUSTFLAGS="$flags" cargo build --release --locked --target "$t" "${features[@]}"
+    if [[ $t == *-linux-* ]] && readelf -l "target/$t/release/rustic" | grep -q 'program interpreter'; then
         echo "build-backotter: target/$t/release/rustic is linked dynamically" >&2
         exit 1
     fi
