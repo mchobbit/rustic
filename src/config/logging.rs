@@ -149,14 +149,17 @@ const LOCALTIME: &str = "/etc/localtime";
 /// [`LoggingOptions::config`]). A system without one, `TZ` unset and no
 /// `/etc/localtime` (FreeBSD installs without it, as a rescue system may
 /// run), is no news, only for the debug log: its own tools use UTC then
-/// too. A `TZ` or `/etc/localtime` that jiff can't read is warned about.
+/// too. Nor is an `/etc/localtime` that links to nothing (Alpine without
+/// tzdata links it to `/usr/share/zoneinfo/UTC`), with which they use UTC
+/// as well, and BackOtter's restic says nothing. A `TZ`, or an
+/// `/etc/localtime` there is, that jiff can't read is warned about.
 pub fn report_time_zone() {
     let Err(err) = TimeZone::try_system() else {
         return;
     };
     if let Some(tz) = std::env::var_os("TZ") {
         warn!("TZ={tz:?} not understood, times are in UTC: {err}");
-    } else if std::fs::symlink_metadata(LOCALTIME).is_ok() {
+    } else if std::fs::metadata(LOCALTIME).is_ok() {
         warn!("{LOCALTIME} not understood, times are in UTC: {err}");
     } else {
         debug!("no system time zone, times are in UTC: {err}");

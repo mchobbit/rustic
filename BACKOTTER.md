@@ -22,8 +22,11 @@ than merged.
   time in every node: hundreds of warnings in a backup, and once more
   where there is no `/usr/share/zoneinfo` (AlpineBSD). Its warnings are
   all about time zones, and now go to the log only with
-  `--log-level-dependencies` above `warn`. A `TZ` or `/etc/localtime` that
-  jiff can't read gets one warning, and UTC.
+  `--log-level-dependencies` above `warn`. Nor is an `/etc/localtime` that
+  links to nothing (Alpine without tzdata links it to
+  `/usr/share/zoneinfo/UTC`) any news: UTC, debug log only, as restic says
+  nothing. A `TZ`, or an `/etc/localtime` there is, that jiff can't read
+  gets one warning, and UTC.
 
 Backups and restores work as BackOtter's restic does them, by default (see
 BACKOTTER.md in rustic_core):
@@ -51,6 +54,14 @@ BACKOTTER.md in rustic_core):
   times; stock rustic stored them as `0755` with no owner or times. It
   leaves out a device node's device number where it is 0, as restic does
   (see BACKOTTER.md in rustic_core).
+- `backup` leaves out a regular file's mode where it is 0 (`/etc/shadow`
+  on Rocky), as restic does; skips illumos doors, as it skips sockets; and
+  reads extended attributes over 4 KiB whole on Linux (the xattr crate
+  read them as empty). `restore` never removes a file's SELinux label
+  where its node has none (SELinux refuses), clears append-only on ZFS on
+  Linux before restoring over a file (`FS_IOC_FSSETXATTR` doesn't there),
+  and on illumos tmpfs sets no birth time without a warning (see
+  BACKOTTER.md in rustic_core).
 - `backup` reads files with holes by their data extents (`SEEK_DATA`,
   `SEEK_HOLE`, on Linux, FreeBSD, macOS and illumos) and gives the chunker
   zeros for the holes without reading them: the same bytes as plain
