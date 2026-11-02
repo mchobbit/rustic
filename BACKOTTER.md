@@ -45,7 +45,9 @@ BACKOTTER.md in rustic_core):
 - `restore` gives files the uid and gid they were saved with; stock rustic
   looks owners up by name, in the users of the system it runs on, as
   `--by-name` (or `--ownership-by-name`, restic's name for it) still does.
-  `--numeric-id` is accepted, and changes nothing.
+  `--numeric-id` is accepted, and changes nothing. A restore not running
+  as root says nothing about an owner it can't set (`EPERM`, `EACCES`), as
+  restic doesn't; stock rustic warned about each such file.
 - `backup` skips Unix sockets and `restore` leaves out the socket nodes
   of older snapshots, as restic does (see BACKOTTER.md in rustic_core).
 - `backup` stores the directories above the backed-up path (`/home` in a
@@ -60,8 +62,9 @@ BACKOTTER.md in rustic_core):
   read them as empty). `restore` never removes a file's SELinux label
   where its node has none (SELinux refuses), clears append-only on ZFS on
   Linux before restoring over a file (`FS_IOC_FSSETXATTR` doesn't there),
-  and on illumos tmpfs sets no birth time without a warning (see
-  BACKOTTER.md in rustic_core).
+  and on illumos tmpfs sets no birth time without a warning, and warns
+  about each NFSv4 ACL tmpfs or UFS refuses (`ENOSYS`) and exits 0, as
+  BackOtter's restic now does too (see BACKOTTER.md in rustic_core).
 - `backup` reads files with holes by their data extents (`SEEK_DATA`,
   `SEEK_HOLE`, on Linux, FreeBSD, macOS and illumos) and gives the chunker
   zeros for the holes without reading them: the same bytes as plain
