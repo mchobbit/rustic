@@ -115,6 +115,18 @@ BACKOTTER.md in rustic_core):
   1, as BackOtter's restic does; stock rustic panicked.
 - FreeBSD's ZFS project IDs (`zfs project`) are kept and restored
   (`freebsd.zfs_project`), as on illumos.
+- `backup` stores a device ID only for nodes with more than one link (the
+  default, `--set-devid hardlink`), now not for a hard-linked FIFO either,
+  whose link count isn't stored; BackOtter's restic now stores device IDs
+  by this same rule (its `device-id-for-hardlinks`, on by default there),
+  so the two tools' snapshots of one tree have the same nodes. `restore`
+  on illumos leaves an extended attribute a file has already with its
+  node's value alone, as on every other system (see BACKOTTER.md in
+  rustic_core).
+- `backup` is about three times as fast as the static musl build was:
+  rustic_core keeps zstd's contexts and the chunker's Rabin tables per
+  thread, for the same bytes (see BACKOTTER.md in rustic_core, and
+  "Building" below).
 
 ## Building
 
@@ -154,7 +166,22 @@ modules for a name it doesn't find in the files, and the static binary
 dies of SIGFPE inside `libnss_systemd.so.2` when a file's owner has no name
 on a host with `systemd` in nsswitch.conf. musl's malloc is slow with many
 threads, so the script builds musl targets with rustic's `mimalloc`
-feature.
+feature. Measured in round 23 on Chopin (12 threads), backing up a
+35,000-path, 1.4 GB Debian tree as an unprivileged user (page-cached, into
+a new repository in RAM), release builds, mean of six interleaved runs:
+
+| build                                   | wall   | user   | sys    | peak RSS |
+|-----------------------------------------|--------|--------|--------|----------|
+| musl + mimalloc, before round 23        | 13.5 s | 31.6 s | 37.5 s | 1.09 GB  |
+| musl + mimalloc (the build)             | 4.0 s  | 19.3 s | 3.8 s  | 1.20 GB  |
+| musl, its own malloc                    | 5.1 s  | 19.4 s | 8.5 s  | 0.21 GB  |
+| BackOtter's restic (three runs)         | 4.5 s  | 33.2 s | 3.8 s  | 0.48 GB  |
+
+Without mimalloc the backup takes 26% longer, for a sixth of the memory;
+mimalloc stays. Round 23's other change (rustic_core: zstd contexts and
+Rabin tables kept per thread, see BACKOTTER.md there) made the first row
+the second: musl's malloc mapped and unmapped zstd's workspaces for every
+blob.
 
 Unlike Go, Rust needs the target's C library and linker to build for another
 system. Build the FreeBSD, OpenBSD, NetBSD and illumos binaries on those
