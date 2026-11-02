@@ -89,6 +89,19 @@ BACKOTTER.md in rustic_core):
   `SEEK_HOLE` finds no hole before the end, the blocks decide which files
   have holes (fewer blocks than the size), as in BackOtter's restic; such a
   file is backed up by plain reading, holes and all, and comes back sparse.
+  The blocks are the destination file system's own down to 512 bytes
+  (4096 where its block size isn't known), as in BackOtter's restic: a
+  file with 512-byte holes on bcachefs formatted with `block_size` 512
+  comes back with them; until round 23 they were at least 4096 bytes, and
+  such a file came back dense (see BACKOTTER.md in rustic_core).
+- `restore` leaves an extended attribute a file has already with its
+  node's value alone, as before, and BackOtter's restic now does too:
+  bcachefs refuses `bcachefs.casefold` on a directory with entries, even
+  the value it has, which the directory got when the restore created it.
+  Where it still has to change on a directory with entries (restored
+  over), bcachefs's refusal is a warning, "casefolding (bcachefs.casefold)
+  not restored on DIR: directory not empty", as for chattr's F, in both
+  tools.
 - `restore` over an existing tree replaces what is in the way of another
   type, with or without `--delete`: a symlink where the snapshot has a
   directory becomes the directory again; stock rustic restored the
