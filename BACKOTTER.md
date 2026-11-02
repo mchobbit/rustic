@@ -65,6 +65,15 @@ BACKOTTER.md in rustic_core):
   and on illumos tmpfs sets no birth time without a warning, and warns
   about each NFSv4 ACL tmpfs or UFS refuses (`ENOSYS`) and exits 0, as
   BackOtter's restic now does too (see BACKOTTER.md in rustic_core).
+- `backup` keeps the attributes of files on FAT (hidden, system, archive
+  cleared, a directory's read-only: `linux.fat_attrs`) and the options of
+  files on XFS (extent size hints, nodefrag, filestream, ...:
+  `linux.xfs_options`), on Linux, as restic does, and `restore` puts them
+  back there, last, before the file flags (an extent size hint also as
+  soon as it creates the file, while it is empty); onto another file system
+  they are one warning per restore. A dense restore leaves XFS's
+  preallocated flag (`p`) on the files it preallocates, as restic's does
+  (see BACKOTTER.md in rustic_core).
 - `backup` reads files with holes by their data extents (`SEEK_DATA`,
   `SEEK_HOLE`, on Linux, FreeBSD, macOS and illumos) and gives the chunker
   zeros for the holes without reading them: the same bytes as plain
