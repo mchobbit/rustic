@@ -10,22 +10,31 @@ than merged.
 
 - `[patch.crates-io]` in Cargo.toml, which swaps crates.io's rustic_core for
   BackOtter's. Cargo.lock pins the exact commit.
-- Restoring `SNAP:subfolder` into a destination directory that the restore
-  creates, or that holds nothing but directories, at any depth, and entries
-  a file system makes itself (`lost+found`, a directory; FreeBSD UFS's
-  `.snap`, a directory, and `.sujournal`, a regular file; none looked
-  into), gives it the subfolder's own metadata: a new file system's root,
-  with the system's other new file systems mounted below it (`/boot`,
-  `/boot/efi`, `/home`, ZFS datasets, btrfs subvolumes) and the directories
-  made for their mount points, BackOtter's bare-metal restore. Symlinks
-  aren't followed, and one anywhere (or a file, a device, a directory that
-  can't be read), or more than 4096 directories, means the destination
-  isn't fresh. As BackOtter's restic.
+- Restoring `SNAP:subfolder` into a destination directory that is fresh
+  gives it the subfolder's own metadata. Fresh means the restore creates
+  it, or every entry found walking it (no symlink followed) is one of:
+  (a) an entry a file system makes itself, whatever it holds
+  (`lost+found`, a directory; FreeBSD UFS's `.snap`, a directory, and
+  `.sujournal`, a regular file); (b) a mount point, a directory whose
+  device (`st_dev`) differs from its parent's (also a ZFS dataset's or a
+  btrfs subvolume's root, which have devices of their own), what it holds
+  again (a), (b) or (c); (c) a directory on the path to one, holding only
+  (a), (b) and (c), and at least one (b). That is a new file system's
+  root, with the system's other new file systems mounted below it
+  (`/boot`, `/boot/efi`, `/home`, ZFS datasets, btrfs subvolumes),
+  BackOtter's bare-metal restore. Anything else (a file, a symlink, a
+  device, a plain directory on the destination's own file system, even
+  an empty one, a directory that can't be read), or more than 4096
+  directories, means the destination isn't fresh. Where there are no
+  device numbers (Windows) nothing is a mount point. As BackOtter's
+  restic.
   Stock rustic leaves the destination as it was, so a restored file
   system's root keeps mkfs's mode and has no SELinux label. A destination
-  with anything else in it stays exactly as it is
+  that isn't fresh stays exactly as it is
   (owner, mode, times, extended attributes, ACLs, flags), as in stock
-  rustic: `restore latest:/root /tmp` as root leaves /tmp 1777
+  rustic: `restore latest:/root /tmp` as root leaves /tmp 1777, even a
+  freshly booted server's /tmp holding nothing but empty `.X11-unix`,
+  `.ICE-unix` and `systemd-private-*/tmp` directories
   (`rustic_core::restore_target_is_fresh`, looked at before the restore
   starts).
 - `restore` (and the TUI's) passes the snapshot's origin to rustic_core
@@ -115,7 +124,18 @@ defaults stay stock rustic's, and BackOtter passes the options:
   none), and not with `--sparse by-content`; it looks first, and opens for
   writing only a file that has holes. Stock restic and rustic snapshots
   mark no file, so their files are left as they are, as stock rustic
-  leaves them (see BACKOTTER.md in rustic_core).
+  leaves them (see BACKOTTER.md in rustic_core). Only Linux fills holes
+  (`fallocate(2)`, not on ZFS); macOS and the other systems fill none and
+  write nothing into a file whose contents already match, as BackOtter's
+  restic: macOS's `F_PREALLOCATE` only adds space past a file's end. A
+  file that got blocks counts as modified, even where the fill then failed
+  (`ENOSPC`), and `--dry-run` counts one whose holes it would fill as
+  modified, as BackOtter's restic reports it as updated.
+- `merge` gives the snapshot it makes the program version of this build
+  (`+backotter`) only if every snapshot merged is BackOtter's; otherwise
+  the version without `+backotter` (`rustic 0.11.4`), so that a stock
+  snapshot's missing attributes stay unknown (see BACKOTTER.md in
+  rustic_core).
 - `restore` makes files that had holes sparse again, where it restores them
   into new files: of each file system block a blob reaches into, the part
   inside the blob is written only if it isn't all zeros, so a block is
@@ -202,9 +222,13 @@ Linux binaries are static, as BackOtter's restic is: a dynamic one needs
 built against, and NixOS has only a stub loader there that refuses to start
 it. Build them for `x86_64-unknown-linux-musl` (static by default; the
 script refuses a Linux binary with a program interpreter). With no target
-on a glibc Linux (`*-linux-gnu`) the script builds
-`<arch>-unknown-linux-musl`, and it refuses a `*-linux-gnu` target named
-explicitly, saying why (below). Like restic's
+on a glibc Linux (`*-linux-gnu*`) the script builds the musl target of the
+same name, ABI suffix kept: `-linux-gnu` becomes `-linux-musl`
+(`x86_64-unknown-linux-musl`, `armv7-unknown-linux-musleabihf` on an
+`armv7-unknown-linux-gnueabihf` host, `*-musleabi` for `*-gnueabi`); where
+rustc has no such target (`rustc --print target-list`) it stops and says
+so. It refuses a `*-linux-gnu*` target named explicitly, saying why
+(below) and naming its musl target. Like restic's
 pure-Go user lookup and resolver, musl reads `/etc/passwd`, `/etc/group`,
 `/etc/hosts` and `/etc/resolv.conf` itself and loads no NSS modules, so
 names from LDAP, sssd or systemd (`systemd`, `resolve`, `mymachines`) don't

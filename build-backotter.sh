@@ -28,16 +28,28 @@ walkdir_source=$(locked walkdir | cut -d' ' -f2)
     exit 1
 }
 targets=("$@")
+# The musl target of a glibc Linux target: -linux-gnu becomes -linux-musl,
+# its ABI suffix kept (x86_64-unknown-linux-gnu -> x86_64-unknown-linux-musl,
+# armv7-unknown-linux-gnueabihf -> armv7-unknown-linux-musleabihf,
+# arm-unknown-linux-gnueabi -> arm-unknown-linux-musleabi).
+musl_of() { printf '%s\n' "${1/-linux-gnu/-linux-musl}"; }
 # With no target: this machine's, but musl on a glibc Linux: a static glibc
 # build dies (SIGFPE) in NSS (below), and a dynamic one is refused.
 if [[ ${#targets[@]} -eq 0 ]]; then
     host=$(rustc -vV | sed -n 's/^host: //p')
-    [[ $host == *-linux-gnu* ]] && host=${host%%-*}-unknown-linux-musl
+    if [[ $host == *-linux-gnu* ]]; then
+        musl=$(musl_of "$host")
+        rustc --print target-list | grep -xF -- "$musl" >/dev/null || {
+            echo "build-backotter: this machine is $host, whose musl target would be $musl, which rustc doesn't have (rustc --print target-list); name a target (BACKOTTER.md, \"Building\")" >&2
+            exit 1
+        }
+        host=$musl
+    fi
     targets=("$host")
 fi
 for t in "${targets[@]}"; do
     [[ $t != *-linux-gnu* ]] || {
-        echo "build-backotter: $t: a static glibc build dies with SIGFPE in NSS (a file owner without a name, systemd in nsswitch.conf), and a dynamic one isn't portable; build ${t%%-*}-unknown-linux-musl (BACKOTTER.md, \"Building\")" >&2
+        echo "build-backotter: $t: a static glibc build dies with SIGFPE in NSS (a file owner without a name, systemd in nsswitch.conf), and a dynamic one isn't portable; build $(musl_of "$t") (BACKOTTER.md, \"Building\")" >&2
         exit 1
     }
 done
