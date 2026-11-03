@@ -60,6 +60,8 @@ impl MergeCmd {
         }
 
         let mut snap = SnapshotFile::from_options(&self.snap_opts)?;
+        // BackOtter: rustic_core cuts "+backotter" off it unless every
+        // snapshot merged is BackOtter's.
         snap.program_version = program_version();
         let snap = repo.merge_snapshots(&snapshots, &last_modified_node, snap)?;
 
