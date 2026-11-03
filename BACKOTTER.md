@@ -10,10 +10,23 @@ than merged.
 
 - `[patch.crates-io]` in Cargo.toml, which swaps crates.io's rustic_core for
   BackOtter's. Cargo.lock pins the exact commit.
-- Restoring `SNAP:subfolder` gives the destination directory the
-  subfolder's own metadata, as everything below it gets its own; stock
-  rustic leaves the destination as it was, so a restored file system's root
-  keeps mkfs's mode and has no SELinux label.
+- Restoring `SNAP:subfolder` into a destination directory that the restore
+  creates, or that is empty (one holding only `lost+found` counts as
+  empty: a new file system's root), gives it the subfolder's own metadata,
+  as everything below it gets its own; stock rustic leaves the destination
+  as it was, so a restored file system's root keeps mkfs's mode and has no
+  SELinux label. A destination with anything in it stays exactly as it is
+  (owner, mode, times, extended attributes, ACLs, flags), as in stock
+  rustic: `restore latest:/root /tmp` as root leaves /tmp 1777
+  (`rustic_core::restore_target_is_fresh`, looked at before the restore
+  starts).
+- `restore` (and the TUI's) passes the snapshot's origin to rustic_core
+  (`RestoreOptions::origin`, from its program version): in a snapshot of
+  BackOtter's restic or rustic (`+backotter`) a node's missing attributes
+  were zero or absent at backup (no flags, no project ID, no holes); in a
+  stock restic or rustic one they are unknown, and the restore leaves the
+  destination's as they are, as stock rustic does (see BACKOTTER.md in
+  rustic_core).
 - The version reads `X.Y.Z+backotter.N`, so `rustic --version` and every
   snapshot's program version say which build made it.
 - Without a time zone (no `/etc/localtime`, as FreeBSD and DragonFly
@@ -28,26 +41,33 @@ than merged.
   nothing. A `TZ`, or an `/etc/localtime` there is, that jiff can't read
   gets one warning, and UTC.
 
-Backups and restores work as BackOtter's restic does them, by default (see
-BACKOTTER.md in rustic_core):
+Backups and restores work as BackOtter's restic does them (see BACKOTTER.md
+in rustic_core). Where that needs other defaults than stock rustic's, the
+defaults stay stock rustic's, and BackOtter passes the options:
 
-- `backup` keeps each file's access time; stock rustic stores the mtime
-  there, as `--set-atime mtime` still does. `config/full.toml` shows the new
-  default. On Linux the backup reads files and directories without changing
-  their access times (`O_NOATIME`, where it may), except symlinks':
-  `readlink(2)` moves them, with no way around it, though the snapshot
-  keeps the earlier ones. Elsewhere (FreeBSD and the other BSDs, illumos,
-  Haiku), with no `O_NOATIME`, listing a directory moves its access time:
-  the backup takes a directory's metadata before it lists it, and doesn't
-  scan the source for its size first (as `--no-scan`: no total or ETA), so
-  that the snapshot has the access times from before the backup, as in
-  BackOtter's restic. `rewrite` keeps the saved access times too.
-- `restore` gives files the uid and gid they were saved with; stock rustic
-  looks owners up by name, in the users of the system it runs on, as
-  `--by-name` (or `--ownership-by-name`, restic's name for it) still does.
-  `--numeric-id` is accepted, and changes nothing. A restore not running
-  as root says nothing about an owner it can't set (`EPERM`, `EACCES`), as
-  restic doesn't; stock rustic warned about each such file.
+- `backup` stores the mtime as each file's access time, as stock rustic
+  does; `backup --set-atime yes` (or `set-atime = "yes"` in the `[backup]`
+  config), which BackOtter passes, keeps each file's own, as BackOtter's
+  restic does with `--with-atime`. Real atimes change whenever something
+  reads a file, so they cost new trees on backups where nothing else
+  changed. With them, on Linux the backup reads files and directories
+  without changing their access times (`O_NOATIME`, where it may), except
+  symlinks': `readlink(2)` moves them, with no way around it, though the
+  snapshot keeps the earlier ones. Elsewhere (FreeBSD and the other BSDs,
+  illumos, Haiku), with no `O_NOATIME`, listing a directory moves its
+  access time: the backup takes a directory's metadata before it lists it,
+  and with `--set-atime yes` doesn't scan the source for its size first
+  (as `--no-scan`: no total or ETA), so that the snapshot has the access
+  times from before the backup, as in BackOtter's restic. With the default
+  the scan runs on every system, as in stock rustic. `rewrite --set-atime`
+  defaults to `mtime`, as in stock rustic.
+- `restore` looks owners up by name, falling back to the saved uid and
+  gid, as stock rustic does (`--by-name`, or `--ownership-by-name`,
+  restic's name for it, says so explicitly); `restore --numeric-id`, which
+  BackOtter passes, gives files the uid and gid they were saved with, as
+  restic does. A restore not running as root says nothing about an owner
+  it can't set (`EPERM`, `EACCES`), as restic doesn't; stock rustic warned
+  about each such file.
 - `backup` skips Unix sockets and `restore` leaves out the socket nodes
   of older snapshots, as restic does (see BACKOTTER.md in rustic_core).
 - `backup` stores the directories above the backed-up path (`/home` in a
@@ -56,8 +76,11 @@ BACKOTTER.md in rustic_core):
   times; stock rustic stored them as `0755` with no owner or times. It
   leaves out a device node's device number where it is 0, as restic does
   (see BACKOTTER.md in rustic_core).
-- `backup` leaves out a regular file's mode where it is 0 (`/etc/shadow`
-  on Rocky), as restic does; skips illumos doors, as it skips sockets; and
+- `backup` writes a regular file's mode where it is 0 (`/etc/shadow` on
+  Rocky) as `"mode":0`, as stock rustic does (restic leaves it out; a
+  restore of a restic or BackOtter snapshot gives a Unix file without one
+  0000, and a stdin or Windows file the mode it is created with, as stock
+  rustic); skips illumos doors, as it skips sockets; and
   reads extended attributes over 4 KiB whole on Linux (the xattr crate
   read them as empty). `restore` never removes a file's SELinux label
   where its node has none (SELinux refuses), clears append-only on ZFS on
@@ -78,6 +101,13 @@ BACKOTTER.md in rustic_core):
   `SEEK_HOLE`, on Linux, FreeBSD, macOS and illumos) and gives the chunker
   zeros for the holes without reading them: the same bytes as plain
   reading, so the same chunks and snapshots.
+- `restore` over an existing tree fills the holes of a file it leaves as it
+  is (a swap file left with holes by an interrupted restore) only in a
+  snapshot of BackOtter's, for a file not marked `unix.sparse` (it had
+  none), and not with `--sparse by-content`; it looks first, and opens for
+  writing only a file that has holes. Stock restic and rustic snapshots
+  mark no file, so their files are left as they are, as stock rustic
+  leaves them (see BACKOTTER.md in rustic_core).
 - `restore` makes files that had holes sparse again, where it restores them
   into new files: of each file system block a blob reaches into, the part
   inside the blob is written only if it isn't all zeros, so a block is
@@ -110,7 +140,13 @@ BACKOTTER.md in rustic_core):
   it on what it finds there (immutable, append-only, undeletable: FreeBSD's
   `schg`, `sappnd`, `sunlnk` and the rest, Linux's `i` and `a`), and gives
   every file its snapshot's flags last, so a restore over an installed
-  FreeBSD puts its `schg` libc back as it was. A file whose contents can't
+  FreeBSD puts its `schg` libc back as it was: only where the snapshot says
+  which flags the file had (a node with flags, or any node of a BackOtter
+  snapshot, which records them wherever there are any). In a stock restic
+  or rustic snapshot what the restore finds keeps its flags, as in stock
+  rustic, and what they refuse fails with its error. What `--delete`
+  removes never loses its flags: a protected file stays, with an error,
+  as in stock rustic. A file whose contents can't
   be written is reported once, the rest is restored, and the restore exits
   1, as BackOtter's restic does; stock rustic panicked.
 - FreeBSD's ZFS project IDs (`zfs project`) are kept and restored
@@ -130,7 +166,8 @@ BACKOTTER.md in rustic_core):
 
 ## Building
 
-    ./build-backotter.sh [TARGET ...]     # default: this machine's target
+    ./build-backotter.sh [TARGET ...]     # default: this machine's target,
+                                          # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
 names (`bko_core`, now 0.13.0+backotter.3) and rustic_core's walkdir (see
@@ -156,7 +193,10 @@ Linux binaries are static, as BackOtter's restic is: a dynamic one needs
 `/lib64/ld-linux-x86-64.so.2` and a glibc at least as new as the one it was
 built against, and NixOS has only a stub loader there that refuses to start
 it. Build them for `x86_64-unknown-linux-musl` (static by default; the
-script refuses a Linux binary with a program interpreter). Like restic's
+script refuses a Linux binary with a program interpreter). With no target
+on a glibc Linux (`*-linux-gnu`) the script builds
+`<arch>-unknown-linux-musl`, and it refuses a `*-linux-gnu` target named
+explicitly, saying why (below). Like restic's
 pure-Go user lookup and resolver, musl reads `/etc/passwd`, `/etc/group`,
 `/etc/hosts` and `/etc/resolv.conf` itself and loads no NSS modules, so
 names from LDAP, sssd or systemd (`systemd`, `resolve`, `mymachines`) don't
