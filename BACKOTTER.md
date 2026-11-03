@@ -15,10 +15,12 @@ than merged.
   it, or every entry found walking it (no symlink followed) is one of:
   (a) an entry a file system makes itself, whatever it holds
   (`lost+found`, a directory; FreeBSD UFS's `.snap`, a directory, and
-  `.sujournal`, a regular file); (b) a mount point, a directory whose
-  device (`st_dev`) differs from its parent's (also a ZFS dataset's or a
-  btrfs subvolume's root, which have devices of their own), what it holds
-  again (a), (b) or (c); (c) a directory on the path to one, holding only
+  `.sujournal`, a regular file; nilfs2's `.nilfs`, an empty regular file,
+  which mkfs.nilfs2 2.0.0 to 2.2.9 make, as in Ubuntu 24.04 and Zorin
+  18); (b) a mount point, a directory whose device (`st_dev`) differs
+  from its parent's (also a ZFS dataset's or a btrfs subvolume's root,
+  which have devices of their own), what it holds again (a), (b) or (c);
+  (c) a directory on the path to one, holding only
   (a), (b) and (c), and at least one (b). That is a new file system's
   root, with the system's other new file systems mounted below it
   (`/boot`, `/boot/efi`, `/home`, ZFS datasets, btrfs subvolumes),
