@@ -28,7 +28,19 @@ walkdir_source=$(locked walkdir | cut -d' ' -f2)
     exit 1
 }
 targets=("$@")
-[[ ${#targets[@]} -gt 0 ]] || targets=("$(rustc -vV | sed -n 's/^host: //p')")
+# With no target: this machine's, but musl on a glibc Linux: a static glibc
+# build dies (SIGFPE) in NSS (below), and a dynamic one is refused.
+if [[ ${#targets[@]} -eq 0 ]]; then
+    host=$(rustc -vV | sed -n 's/^host: //p')
+    [[ $host == *-linux-gnu* ]] && host=${host%%-*}-unknown-linux-musl
+    targets=("$host")
+fi
+for t in "${targets[@]}"; do
+    [[ $t != *-linux-gnu* ]] || {
+        echo "build-backotter: $t: a static glibc build dies with SIGFPE in NSS (a file owner without a name, systemd in nsswitch.conf), and a dynamic one isn't portable; build ${t%%-*}-unknown-linux-musl (BACKOTTER.md, \"Building\")" >&2
+        exit 1
+    }
+done
 
 mkdir -p dist
 for t in "${targets[@]}"; do
@@ -43,11 +55,8 @@ for t in "${targets[@]}"; do
     # with many threads, so musl builds take mimalloc: without it a backup
     # took 26% longer (round 23: 5.1 s, not 4.0 s, for a 35,000-path tree),
     # though with a sixth of the memory (0.2 GB, not 1.2 GB; BACKOTTER.md,
-    # "Building").  A *-linux-gnu build
-    # is static PIE (+crt-static); with --target, the flag reaches only the
-    # target's code, not build scripts or proc macros.
+    # "Building").  *-linux-gnu targets are refused above.
     flags=${RUSTFLAGS:-} features=()
-    [[ $t == *-linux-gnu* ]] && flags="${flags:+$flags }-C target-feature=+crt-static"
     [[ $t == *-linux-musl* ]] && features=(--features mimalloc)
     # Default features: not "release", which adds self-update, which would
     # replace this build with stock rustic.  Without PROJECT_VERSION, which

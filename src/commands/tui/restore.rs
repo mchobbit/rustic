@@ -1,7 +1,9 @@
 use anyhow::Result;
 use crossterm::event::{Event, KeyCode, KeyEventKind};
 use ratatui::prelude::*;
-use rustic_core::{LocalDestination, LsOptions, RestoreOptions, RestorePlan, repofile::Node};
+use rustic_core::{
+    LocalDestination, LsOptions, RestoreOptions, RestorePlan, SnapshotOrigin, repofile::Node,
+};
 
 use crate::{
     commands::tui::widgets::{
@@ -31,8 +33,16 @@ pub(crate) struct Restore<'a> {
 }
 
 impl<'a> Restore<'a> {
-    pub fn new(repo: &'a IndexedRepo, node: Node, source: String, path: &str) -> Self {
-        let opts = RestoreOptions::default();
+    pub fn new(
+        repo: &'a IndexedRepo,
+        node: Node,
+        source: String,
+        path: &str,
+        origin: SnapshotOrigin,
+    ) -> Self {
+        // BackOtter: the snapshot's origin, which says what a node's missing
+        // attributes mean.
+        let opts = RestoreOptions::default().origin(origin);
         let title = format!("restore {source} to:");
         let popup = popup_input(title, "enter restore destination", path, 1);
         Self {

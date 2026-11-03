@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph},
 };
 use rustic_core::{
-    TreeId,
+    SnapshotOrigin, TreeId,
     repofile::{Node, SnapshotFile, Tree},
 };
 use style::palette::tailwind;
@@ -366,6 +366,7 @@ impl<'a> ProcessEvent for Ls<'a> {
                                 node.clone(),
                                 format!("{}:/{path}", self.snapshot.id),
                                 &default_target,
+                                SnapshotOrigin::of(&self.snapshot),
                             );
                             self.current_screen = CurrentScreen::Restore(Box::new(restore));
                         }
