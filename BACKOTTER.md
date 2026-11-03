@@ -25,16 +25,20 @@ than merged.
   BackOtter's bare-metal restore. Anything else (a file, a symlink, a
   device, a plain directory on the destination's own file system, even
   an empty one, a directory that can't be read), or more than 4096
-  directories, means the destination isn't fresh. Where there are no
-  device numbers (Windows) nothing is a mount point. As BackOtter's
-  restic.
+  directories, means the destination isn't fresh. Nor is an existing
+  destination that is sticky or that others may write in (mode bits
+  01000 or 0002), even an empty one: an empty /tmp (in a container, on a
+  system without systemd, a new tmpfs) or /dev/shm. mkfs, newfs,
+  `zfs create` and `btrfs subvolume create` never make such a root.
+  Where there are no device numbers (Windows) nothing is a mount point,
+  and there are no such mode bits. As BackOtter's restic.
   Stock rustic leaves the destination as it was, so a restored file
   system's root keeps mkfs's mode and has no SELinux label. A destination
   that isn't fresh stays exactly as it is
   (owner, mode, times, extended attributes, ACLs, flags), as in stock
-  rustic: `restore latest:/root /tmp` as root leaves /tmp 1777, even a
-  freshly booted server's /tmp holding nothing but empty `.X11-unix`,
-  `.ICE-unix` and `systemd-private-*/tmp` directories
+  rustic: `restore latest:/root /tmp` as root leaves /tmp 1777, even an
+  empty /tmp or a freshly booted server's /tmp holding nothing but empty
+  `.X11-unix`, `.ICE-unix` and `systemd-private-*/tmp` directories
   (`rustic_core::restore_target_is_fresh`, looked at before the restore
   starts).
 - `restore` (and the TUI's) passes the snapshot's origin to rustic_core
