@@ -85,9 +85,11 @@ impl RestoreCmd {
         // empty path). Without it a restored file system's root keeps
         // mkfs's mode and has no SELinux label. Any other destination stays
         // as it is (owner, mode, times, extended attributes, ACLs, flags),
-        // as in stock rustic: /tmp keeps its sticky bit, even holding only
-        // empty directories (.X11-unix). A whole snapshot has no node of its
-        // own (empty metadata), and leaves the destination as it is.
+        // as in stock rustic: /tmp keeps its sticky bit, even empty or
+        // holding only empty directories (.X11-unix); a sticky destination,
+        // or one others may write in, is never fresh. A whole snapshot has
+        // no node of its own (empty metadata), and leaves the destination
+        // as it is.
         let target = (node.is_dir()
             && node.meta != Metadata::default()
             && restore_target_is_fresh(&self.dest))
