@@ -27,7 +27,14 @@ than merged.
   BackOtter's bare-metal restore. Anything else (a file, a symlink, a
   device, a plain directory on the destination's own file system, even
   an empty one, a directory that can't be read), or more than 4096
-  directories, means the destination isn't fresh. Nor is an existing
+  directories, means the destination isn't fresh. vfat (Linux's
+  mkfs.fat, and the BSDs' newfs_msdos, whose volume label entry is never
+  listed), jfs, f2fs, xfs, btrfs, ZFS, NetBSD, OpenBSD and DragonFly UFS,
+  HAMMER2 and Haiku's BFS make no entries at all. A new nilfs2 made
+  by mkfs.nilfs2 before 2.0.22 (2010), whose root also holds an empty
+  regular file `.sketch`, isn't, nor is a ZFS dataset with
+  `snapdir=visible`, whose root lists its `.zfs` directory (with the
+  default, `snapdir=hidden`, it lists nothing). Nor is an existing
   destination that is sticky or that others may write in (mode bits
   01000 or 0002), even an empty one: an empty /tmp (in a container, on a
   system without systemd, a new tmpfs) or /dev/shm. mkfs, newfs,
