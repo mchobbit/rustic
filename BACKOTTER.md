@@ -11,11 +11,19 @@ than merged.
 - `[patch.crates-io]` in Cargo.toml, which swaps crates.io's rustic_core for
   BackOtter's. Cargo.lock pins the exact commit.
 - Restoring `SNAP:subfolder` into a destination directory that the restore
-  creates, or that is empty (one holding only `lost+found` counts as
-  empty: a new file system's root), gives it the subfolder's own metadata,
-  as everything below it gets its own; stock rustic leaves the destination
-  as it was, so a restored file system's root keeps mkfs's mode and has no
-  SELinux label. A destination with anything in it stays exactly as it is
+  creates, or that holds nothing but directories, at any depth, and entries
+  a file system makes itself (`lost+found`, a directory; FreeBSD UFS's
+  `.snap`, a directory, and `.sujournal`, a regular file; none looked
+  into), gives it the subfolder's own metadata: a new file system's root,
+  with the system's other new file systems mounted below it (`/boot`,
+  `/boot/efi`, `/home`, ZFS datasets, btrfs subvolumes) and the directories
+  made for their mount points, BackOtter's bare-metal restore. Symlinks
+  aren't followed, and one anywhere (or a file, a device, a directory that
+  can't be read), or more than 4096 directories, means the destination
+  isn't fresh. As BackOtter's restic.
+  Stock rustic leaves the destination as it was, so a restored file
+  system's root keeps mkfs's mode and has no SELinux label. A destination
+  with anything else in it stays exactly as it is
   (owner, mode, times, extended attributes, ACLs, flags), as in stock
   rustic: `restore latest:/root /tmp` as root leaves /tmp 1777
   (`rustic_core::restore_target_is_fresh`, looked at before the restore

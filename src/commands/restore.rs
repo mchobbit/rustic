@@ -75,8 +75,10 @@ impl RestoreCmd {
         let mut ls_opts = self.ls_opts.clone();
         ls_opts.recursive = true;
         // BackOtter: restoring "ID:subfolder" into a destination that the
-        // restore creates, or that is empty (`lost+found` alone counts as
-        // empty: a new file system's root), gives the destination the
+        // restore creates, or that holds nothing but directories and what a
+        // file system makes itself (`lost+found`, UFS's `.snap` and
+        // `.sujournal`: a new file system's root with the others mounted
+        // below it, restore_target_is_fresh), gives the destination the
         // subfolder's own metadata, as everything below it gets its own:
         // the subfolder's node goes first, as the destination itself (an
         // empty path). Without it a restored file system's root keeps
