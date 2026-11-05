@@ -321,7 +321,9 @@ fixed release; zip 8.6.0 (RUSTSEC-2026-0367..0369, -0429), whose
 advisories are about extracting archives, which rustic never does
 (`dump` writes zip archives), and whose fix is zip 9, a breaking
 release; quinn-proto, h2, webpki-roots and webpki-root-certs, which this
-build doesn't compile.
+build doesn't compile; quick-xml 0.38.4 (RUSTSEC-2026-0194, -0195),
+which only self-update takes (the `release` feature, not built; this
+build has 0.41.0).
 
 Not ported, from rustic_core's `main`: e01b17f (#553) iOS build, no
 BackOtter platform; ca81cfe (#549) and e574765 (#552) documentation
