@@ -309,15 +309,19 @@ right link left, anything else but a directory replaced); b583e92 (#602)
 Cargo.lock takes the first patched releases of crates this build ships
 that RustSec has advisories against: zstd 0.13.4, zstd-safe 7.4.0,
 zstd-sys 2.1.2 (zstd 1.5.7 still), rustls 0.23.46, rustls-webpki
-0.103.16, ctutils 0.4.4. Left as they are: suppaftp 8.0.5
-(RUSTSEC-2026-0271, FTP command injection through CR/LF in arguments,
-for `opendal:ftp` repositories), fixed only in suppaftp 10, which needs
-opendal 0.59 and so a rustic_backend newer than crates.io's 0.7.0; rsa
-0.9.10 (RUSTSEC-2023-0071), which has no fixed release; zip 8.6.0
-(RUSTSEC-2026-0367..0369, -0429), whose advisories are about extracting
-archives, which rustic never does (`dump` writes zip archives), and whose
-fix is zip 9, a breaking release; quinn-proto, h2, webpki-roots and
-webpki-root-certs, which this build doesn't compile.
+0.103.16, ctutils 0.4.4; and chacha20 0.10.2, as 0.10.1 is yanked: its
+SSE2 backend (picked without AVX2) runs an SSE4.1 instruction in the RNG
+behind every nonce and `Id::random`, SIGILL on CPUs with neither (AMD
+K8/K10, Core 2 Merom/Conroe; RustCrypto/stream-ciphers#579). Left as
+they are: suppaftp 8.0.5 (RUSTSEC-2026-0271, FTP command injection
+through CR/LF in arguments, for `opendal:ftp` repositories), fixed only
+in suppaftp 10, which needs opendal 0.59 and so a rustic_backend newer
+than crates.io's 0.7.0; rsa 0.9.10 (RUSTSEC-2023-0071), which has no
+fixed release; zip 8.6.0 (RUSTSEC-2026-0367..0369, -0429), whose
+advisories are about extracting archives, which rustic never does
+(`dump` writes zip archives), and whose fix is zip 9, a breaking
+release; quinn-proto, h2, webpki-roots and webpki-root-certs, which this
+build doesn't compile.
 
 Not ported, from rustic_core's `main`: e01b17f (#553) iOS build, no
 BackOtter platform; ca81cfe (#549) and e574765 (#552) documentation
