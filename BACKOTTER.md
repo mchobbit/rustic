@@ -211,7 +211,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.3) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.4) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -280,6 +280,57 @@ library: build it with nightly and `-Zbuild-std`, against a sysroot and
 linker for DragonFly. Cargo.lock has rustix 1.1.6 rather than 1.1.4 for it:
 1.1.4 wants source-specific multicast socket options for DragonFly that
 libc doesn't have there, and doesn't build.
+
+## Upstream fixes
+
+0.11.4+backotter.4 builds on rustic_core 0.13.0+backotter.4, which has
+these fixes from rustic_core's `main` after 0.13.0, cherry-picked (see
+BACKOTTER.md there for how the two that conflicted were resolved):
+52a1839 (#544) cache backend guarded by locks; c4059e3 (#548) and
+d56cc4a (#630) canonicalization errors name the path; 35aef00 (#547)
+the local backend's delete hook on a replaced file (in rustic_core's
+`crates/backend`, which this build doesn't use: rustic_backend 0.7.0
+comes from crates.io); 9d9e478 (#546) tree workers stop when the
+receiver closes; d7e097c (#585) no underflow in
+`BlobLocation::data_length`; 4589ea7 (#586) `repair snapshots` and file
+nodes without contents; be62e24 (#588) directory nodes without a
+subtree in `ls` and merges; 459bb53 (#589) no overflow in
+`can_coalesce`; f5b8fd6 (#591) `BlobCopier` checks blob bounds; 82b81d2
+(#592) bad scrypt parameters in key files refused; 0db92b6 (#607) tree
+loader threads joined before the index goes; b77ecc8 (#590) a restore
+refuses node paths that leave the destination (`..`, root, prefix);
+fba52fa (#587) `prune` and directory nodes without a subtree; 4c3d6fa
+(#633) `forget --keep-minutely` within one hour; 00bd025 (#632)
+`backup` compares inode numbers unless `--ignore-inode`, as restic;
+506a1da (#634) a restore's hard link over an entry at its name (the
+right link left, anything else but a directory replaced); b583e92 (#602)
+`init_with_config` takes `is_hot` from the repository.
+
+Cargo.lock takes the first patched releases of crates this build ships
+that RustSec has advisories against: zstd 0.13.4, zstd-safe 7.4.0,
+zstd-sys 2.1.2 (zstd 1.5.7 still), rustls 0.23.46, rustls-webpki
+0.103.16, ctutils 0.4.4. Left as they are: suppaftp 8.0.5
+(RUSTSEC-2026-0271, FTP command injection through CR/LF in arguments,
+for `opendal:ftp` repositories), fixed only in suppaftp 10, which needs
+opendal 0.59 and so a rustic_backend newer than crates.io's 0.7.0; rsa
+0.9.10 (RUSTSEC-2023-0071), which has no fixed release; zip 8.6.0
+(RUSTSEC-2026-0367..0369, -0429), whose advisories are about extracting
+archives, which rustic never does (`dump` writes zip archives), and whose
+fix is zip 9, a breaking release; quinn-proto, h2, webpki-roots and
+webpki-root-certs, which this build doesn't compile.
+
+Not ported, from rustic_core's `main`: e01b17f (#553) iOS build, no
+BackOtter platform; ca81cfe (#549) and e574765 (#552) documentation
+only; b7ab1ee (#556) more reqwest options, a breaking feature; 6fa7b56
+(#559) serde and Merge for `ConfigOptions`, a feature; e97a7dc (#562)
+OpenDAL retries on one line, a feature; b78f648 (#561) unreadable files
+counted in the summary, a feature that changes snapshots' summaries;
+647d00f (#563) backup paths no longer merged, a breaking change of
+behaviour; 4871132 (#629) clippy fixes and dependency updates, breaking
+(`Node`'s and `IndexEntry`'s constructors removed; its advisory fixes
+are taken as above); e2b61aa (#558) HTTP options renamed, breaking;
+9565d4f (#580) a refactor, no fix; eb72c72 (#598) an HTTP read timeout,
+a feature.
 
 ## Moving to a new rustic release
 
