@@ -5803,7 +5803,7 @@ checksum = "fbcebf2228827bc4b61cb54dfd84cf43aacf06ca2dfe4c014b136a0e32b876e2"
 [[package]]
 name = "rustic_core"
 version = "0.13.0+backotter.5"
-source = "git+https://github.com/mchobbit/rustic_core.git?branch=backotter#dd1a67bb1a4e6010b438abf34647b2f4f36db91d"
+source = "git+https://github.com/mchobbit/rustic_core.git?branch=backotter#ad341b936c026387d7578ecdee30cf50a453b4fb"
 dependencies = [
  "aes256ctr_poly1305aes",
  "backon",
@@ -7421,7 +7421,7 @@ dependencies = [
 [[package]]
 name = "walkdir"
 version = "2.5.0"
-source = "git+https://github.com/mchobbit/rustic_core.git?branch=backotter#dd1a67bb1a4e6010b438abf34647b2f4f36db91d"
+source = "git+https://github.com/mchobbit/rustic_core.git?branch=backotter#ad341b936c026387d7578ecdee30cf50a453b4fb"
 dependencies = [
  "libc",
  "same-file",

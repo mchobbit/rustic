@@ -138,7 +138,8 @@ defaults stay stock rustic's, and BackOtter passes the options:
   writing only a file that has holes. Stock restic and rustic snapshots
   mark no file, so their files are left as they are, as stock rustic
   leaves them (see BACKOTTER.md in rustic_core). Only Linux fills holes
-  (`fallocate(2)`, not on ZFS); macOS and the other systems fill none and
+  (`fallocate(2)`; not on ZFS, nor on btrfs but for a no-copy-on-write file,
+  nor on bcachefs, which don't compress what it allocates); macOS and the other systems fill none and
   write nothing into a file whose contents already match, as BackOtter's
   restic: macOS's `F_PREALLOCATE` only adds space past a file's end. A
   file that got blocks counts as modified, even where the fill then failed
@@ -154,7 +155,10 @@ defaults stay stock rustic's, and BackOtter passes the options:
   inside the blob is written only if it isn't all zeros, so a block is
   allocated only where the file has data, as in BackOtter's restic. It
   allocates every other file in full, zeros and all, so that swap files
-  and preallocated files come back allocated; files restored over
+  and preallocated files come back allocated (on btrfs, only
+  no-copy-on-write files, swap files among them, are preallocated, and on
+  bcachefs none: the others get every byte, which compression keeps
+  small); files restored over
   existing ones are never made sparse. `--sparse by-content` makes every
   new file sparse, as in stock rustic. On Linux's JFS and nilfs2, whose
   `SEEK_HOLE` finds no hole before the end, the blocks decide which files
