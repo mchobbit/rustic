@@ -211,7 +211,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.4) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.5) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -283,7 +283,7 @@ libc doesn't have there, and doesn't build.
 
 ## Upstream fixes
 
-0.11.4+backotter.4 builds on rustic_core 0.13.0+backotter.4, which has
+0.11.4+backotter.5 builds on rustic_core 0.13.0+backotter.5, which has
 these fixes from rustic_core's `main` after 0.13.0, cherry-picked (see
 BACKOTTER.md there for how the two that conflicted were resolved):
 52a1839 (#544) cache backend guarded by locks; c4059e3 (#548) and
