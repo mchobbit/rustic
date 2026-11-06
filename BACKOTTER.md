@@ -287,7 +287,11 @@ libc doesn't have there, and doesn't build.
 
 ## Upstream fixes
 
-0.11.4+backotter.5 builds on rustic_core 0.13.0+backotter.5, which has
+0.11.4+backotter.6 takes one fix from rustic's `main` after 0.11.4,
+cherry-picked (`git cherry-pick -x`): 8e5d8af (#1898) `docs` prints the
+URL before trying to open it, so a failure to open it still shows it.
+
+0.11.4+backotter.6 builds on rustic_core 0.13.0+backotter.5, which has
 these fixes from rustic_core's `main` after 0.13.0, cherry-picked (see
 BACKOTTER.md there for how the two that conflicted were resolved):
 52a1839 (#544) cache backend guarded by locks; c4059e3 (#548) and
@@ -329,7 +333,14 @@ build doesn't compile; quick-xml 0.38.4 (RUSTSEC-2026-0194, -0195),
 which only self-update takes (the `release` feature, not built; this
 build has 0.41.0).
 
-Not ported, from rustic_core's `main`: e01b17f (#553) iOS build, no
+Not ported, from rustic's `main`: 143d073 (#1907) `[init]` in a config
+profile, a feature.
+
+Taken after 0.13.0+backotter.5 with no new version: 01fe284 (#640), in
+rustic_core's `crates/backend`, which this build doesn't use.
+
+Not ported, from rustic_core's `main`: 18fa55c (#642) an HTTP connect
+timeout, a feature; e01b17f (#553) iOS build, no
 BackOtter platform; ca81cfe (#549) and e574765 (#552) documentation
 only; b7ab1ee (#556) more reqwest options, a breaking feature; 6fa7b56
 (#559) serde and Merge for `ConfigOptions`, a feature; e97a7dc (#562)
