@@ -17,7 +17,8 @@ than merged.
   (`lost+found`, a directory; FreeBSD UFS's `.snap`, a directory, and
   `.sujournal`, a regular file; nilfs2's `.nilfs`, an empty regular file,
   which mkfs.nilfs2 2.0.0 to 2.2.9 make, as in Ubuntu 24.04 and Zorin
-  18); (b) a mount point, a directory whose device (`st_dev`) differs
+  18; on Haiku, the empty `trash` directory Tracker makes on every volume
+  as it is mounted, a new one too); (b) a mount point, a directory whose device (`st_dev`) differs
   from its parent's (also a ZFS dataset's or a btrfs subvolume's root,
   which have devices of their own), what it holds again (a), (b) or (c);
   (c) a directory on the path to one, holding only
@@ -215,7 +216,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.5) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.6) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -290,6 +291,10 @@ libc doesn't have there, and doesn't build.
 0.11.4+backotter.6 takes one fix from rustic's `main` after 0.11.4,
 cherry-picked (`git cherry-pick -x`): 8e5d8af (#1898) `docs` prints the
 URL before trying to open it, so a failure to open it still shows it.
+
+0.11.4+backotter.7 is 0.11.4+backotter.6 on rustic_core 0.13.0+backotter.6,
+which restores a new Haiku volume's root (its empty Tracker `trash` no longer
+makes it look used); only Haiku's binary differs.
 
 0.11.4+backotter.6 builds on rustic_core 0.13.0+backotter.5, which has
 these fixes from rustic_core's `main` after 0.13.0, cherry-picked (see

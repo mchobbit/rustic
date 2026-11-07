@@ -77,7 +77,7 @@ impl RestoreCmd {
         // BackOtter: restoring "ID:subfolder" into a destination that the
         // restore creates, or that holds nothing but what a file system
         // makes itself (`lost+found`, UFS's `.snap` and `.sujournal`,
-        // nilfs2's empty `.nilfs`),
+        // nilfs2's empty `.nilfs`; on Haiku, Tracker's empty `trash`),
         // mount points and the directories on the path to them (a new file
         // system's root with the others mounted below it,
         // restore_target_is_fresh), gives the destination the
