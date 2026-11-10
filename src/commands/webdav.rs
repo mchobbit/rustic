@@ -153,6 +153,8 @@ impl WebDavCmd {
             .with_state(dav_server);
 
         info!("serving webdav on {addr}");
+        // BackOtter: an interrupt is how webdav ends (--strict-exit).
+        crate::application::ended_by_interrupt();
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()?

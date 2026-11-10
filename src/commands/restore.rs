@@ -5,7 +5,7 @@ use crate::{
 };
 
 use abscissa_core::{Command, Runnable, Shutdown};
-use anyhow::Result;
+use anyhow::{Result, bail};
 use log::{debug, info};
 
 use std::path::PathBuf;
@@ -74,6 +74,10 @@ impl RestoreCmd {
         // for restore, always recurse into tree
         let mut ls_opts = self.ls_opts.clone();
         ls_opts.recursive = true;
+        // BackOtter: the directories above a node the globs let through,
+        // that they don't let through themselves, are restored too, with
+        // their metadata, as in BackOtter's restic.
+        ls_opts.with_parents = true;
         // BackOtter: restoring "ID:subfolder" into a destination that the
         // restore creates, or that holds nothing but what a file system
         // makes itself (`lost+found`, UFS's `.snap` and `.sujournal`,
@@ -100,6 +104,9 @@ impl RestoreCmd {
         let dest = LocalDestination::new(&self.dest, true, !node.is_dir())?;
 
         let restore_infos = repo.prepare_restore(&opts, ls, &dest, dry_run)?;
+        // BackOtter: what the restore couldn't do and only warned about, which
+        // BackOtter's restic counts as errors (exit 1 under `--strict-exit`)
+        let mut errors = restore_infos.stats.errors;
 
         let fs = restore_infos.stats.files;
         println!(
@@ -133,12 +140,16 @@ impl RestoreCmd {
             let repo = repo.drop_data_from_index();
 
             let ls = target.into_iter().map(Ok).chain(repo.ls(&node, &ls_opts)?);
-            repo.restore(restore_infos, &opts, ls, &dest)?;
+            errors += repo.restore(restore_infos, &opts, ls, &dest)?.errors;
             println!("restore done.");
         } else {
             debug!(
                 "--dry-run is without warmup, --dry-run --dry-run-warmup also issues the warmup script."
             );
+        }
+
+        if config.global.strict_exit && errors > 0 {
+            bail!("There were {errors} errors (see the warnings above)");
         }
 
         Ok(())

@@ -90,8 +90,10 @@ defaults stay stock rustic's, and BackOtter passes the options:
   and with `--set-atime yes` doesn't scan the source for its size first
   (as `--no-scan`: no total or ETA), so that the snapshot has the access
   times from before the backup, as in BackOtter's restic. With the default
-  the scan runs on every system, as in stock rustic. `rewrite --set-atime`
-  defaults to `mtime`, as in stock rustic.
+  the scan runs on every system, as in stock rustic. `rewrite` keeps the
+  stored atimes (`--set-atime yes`), as restic does; stock rustic's
+  rewrite gave each node its mtime instead (`--set-atime mtime` still
+  does).
 - `restore` looks owners up by name, falling back to the saved uid and
   gid, as stock rustic does (`--by-name`, or `--ownership-by-name`,
   restic's name for it, says so explicitly); `restore --numeric-id`, which
@@ -209,6 +211,42 @@ defaults stay stock rustic's, and BackOtter passes the options:
   rustic_core keeps zstd's contexts and the chunker's Rabin tables per
   thread, for the same bytes (see BACKOTTER.md in rustic_core, and
   "Building" below).
+- A partial `restore` (`--glob`, `--iglob`) gives the directories above
+  its matches, which don't match themselves, their own metadata and
+  casefolding, as BackOtter's restic does (stock rustic created them
+  bare); and a backup keeps a file's other extended attributes when one
+  can't be read, with a warning naming it (see BACKOTTER.md in
+  rustic_core).
+- `diff SNAP:PATH LOCALDIR` no longer counts the local top directory as
+  added: this build's `LocalSource` gives that directory's own node (a
+  backup keeps it), which the snapshot side has no entry for, and `diff`
+  now leaves it out (`local_path` in `src/commands/diff.rs`). A
+  regression of this build, not in stock rustic.
+- `--strict-exit` (a global option; `RUSTIC_STRICT_EXIT`, or
+  `strict-exit = true` in `[global]`) exits as BackOtter's restic does. A
+  backup that left out entries, or parts of their metadata, it couldn't
+  read still saves its snapshot, and exits 3 (`at least one source file
+  could not be read: ...`); what counts is what restic counts (see
+  `SnapshotSummary::items_incomplete` in rustic_core's BACKOTTER.md). A
+  restore that couldn't set metadata for a reason other than the target
+  not supporting it (or, not running as root, one restic doesn't count
+  then), make a special file, or remove or replace what was in its way
+  exits 1 (`There were N errors`; rustic_core's BACKOTTER.md lists them).
+  An interrupt (SIGINT, SIGTERM, SIGHUP) exits 130, except for `mount` and
+  `webdav`, which an interrupt ends as they are meant to end ("press
+  Ctrl-C to cancel"): they exit 0 with the after hooks, as BackOtter's
+  restic's `mount` exits 0 then. Hooks: a non-zero exit runs the failed
+  hooks at every level whose scope it ends, the global, repository and
+  `[backup]` hooks, except the source-specific hooks of an incomplete
+  snapshot, which was saved, and run their after hooks; an interrupt runs
+  the global failed and finally hooks, not the after ones, and once it is
+  taken the main thread runs no command-level hooks (`hooks.use_with`
+  stops it: `halt_if_interrupted` in `src/application.rs`). Unlike
+  restic, which cancels what is under way, a backup's snapshot whose save
+  was already under way while the failed hooks run can still be written
+  (then the run exits 130 with that snapshot saved). Off by default:
+  then these stay warnings, a backup or restore exits 0 and an interrupt
+  exits 0 with the after hooks, as in stock rustic.
 
 ## Building
 
@@ -216,7 +254,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.6) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.7) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -295,6 +333,10 @@ URL before trying to open it, so a failure to open it still shows it.
 0.11.4+backotter.7 is 0.11.4+backotter.6 on rustic_core 0.13.0+backotter.6,
 which restores a new Haiku volume's root (its empty Tracker `trash` no longer
 makes it look used); only Haiku's binary differs.
+
+0.11.4+backotter.8 is 0.11.4+backotter.7 on rustic_core 0.13.0+backotter.7:
+`--strict-exit`, restored parents of partial restores, rewrite's atimes,
+per-attribute xattr warnings, and diff's local top directory.
 
 0.11.4+backotter.6 builds on rustic_core 0.13.0+backotter.5, which has
 these fixes from rustic_core's `main` after 0.13.0, cherry-picked (see

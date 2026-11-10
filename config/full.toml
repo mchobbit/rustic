@@ -22,6 +22,7 @@ progress-interval = "100ms"
 group-by = "host,label,paths"
 check-index = false
 show-time-offset = false
+strict-exit = false
 prometheus = "http://push-gateway/"
 prometheus-user = "user"
 prometheus-pass = "secret"

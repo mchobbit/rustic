@@ -240,6 +240,19 @@ impl Runnable for BackupCmd {
                 RUSTIC_APP.shutdown_with_exitcode(Shutdown::Graceful, EXIT_INVALID_SOURCE_DATA);
             }
             Err(err) => {
+                // BackOtter: under `--strict-exit`, an incomplete backup exits 3
+                // as a failure (the failed hooks run), as BackOtter's restic
+                if let Some(inc) = err.downcast_ref::<IncompleteBackup>() {
+                    if config.global.progress_options.json_progress
+                        || self.json
+                        || config.backup.json
+                    {
+                        write_json_exit_error(EXIT_INVALID_SOURCE_DATA, UNREADABLE_SOURCE_WARNING);
+                    } else {
+                        warn!("{inc}");
+                    }
+                    RUSTIC_APP.shutdown_with_exitcode(Shutdown::Crash, EXIT_INVALID_SOURCE_DATA);
+                }
                 status_err!("{}", err);
                 RUSTIC_APP.shutdown(Shutdown::Crash);
             }
@@ -282,9 +295,14 @@ impl BackupCmd {
         hooks.use_with(|| -> Result<_> {
             let mut is_err = false;
             let mut source_errors = 0;
+            // BackOtter: entries or metadata left out, summed over the snapshots
+            let mut incomplete = 0;
             for (opts, sources) in snapshots {
                 match opts.backup_snapshot(sources.clone(), &repo) {
-                    Ok(n) => source_errors += n,
+                    Ok((n, inc)) => {
+                        source_errors += n;
+                        incomplete += inc;
+                    }
                     Err(err) => {
                         error!("error backing up {sources}: {err}");
                         is_err = true;
@@ -293,6 +311,8 @@ impl BackupCmd {
             }
             if is_err {
                 Err(anyhow!("Not all snapshots were generated successfully!"))
+            } else if config.global.strict_exit && incomplete > 0 {
+                Err(anyhow::Error::new(IncompleteBackup(incomplete)))
             } else {
                 Ok(source_errors)
             }
@@ -439,7 +459,14 @@ impl BackupCmd {
         Ok(())
     }
 
-    fn backup_snapshot(mut self, source: PathList, repo: &IndexedIdsRepo) -> Result<u64> {
+    /// Back up one snapshot's sources and return its `error_count` and how
+    /// many entries, or parts of their metadata, it left out because they
+    /// couldn't be read (BackOtter: see [`IncompleteBackup`]).
+    fn backup_snapshot(
+        mut self,
+        source: PathList,
+        repo: &IndexedIdsRepo,
+    ) -> Result<(u64, u64)> {
         let config = RUSTIC_APP.config();
         let snapshot_opts = &config.backup.snapshots;
         if let Some(path) = &self.as_path {
@@ -541,9 +568,31 @@ impl BackupCmd {
         }
 
         info!("backup of {source} done.");
-        Ok(snap.summary.as_ref().map_or(0, |s| s.error_count))
+        Ok(snap
+            .summary
+            .as_ref()
+            .map_or((0, 0), |s| (s.error_count, s.items_incomplete)))
     }
 }
+
+/// BackOtter: the error a backup returns under `--strict-exit` when its
+/// snapshots were saved but left out entries, or parts of their metadata,
+/// that couldn't be read; `run` turns it into exit status 3, as BackOtter's
+/// restic does.
+#[derive(Debug)]
+pub(crate) struct IncompleteBackup(pub(crate) u64);
+
+impl Display for IncompleteBackup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "at least one source file could not be read: {} entries or parts of their metadata were left out (see the warnings above); the snapshot is incomplete",
+            self.0
+        )
+    }
+}
+
+impl std::error::Error for IncompleteBackup {}
 
 #[derive(Serialize)]
 struct JsonProgressSummary {

@@ -89,8 +89,9 @@ impl<'a> Restore<'a> {
             .repo
             .prepare_restore(&self.opts, ls.clone(), &dest, false)?;
 
-        // the actual restore
-        self.repo.restore(plan, &self.opts, ls, &dest)?;
+        // the actual restore (BackOtter: the TUI ignores what it only
+        // warned about)
+        _ = self.repo.restore(plan, &self.opts, ls, &dest)?;
         Ok(())
     }
 
