@@ -102,25 +102,34 @@ impl Hooks {
     /// Note: after a failure no error handling is done for the hooks `run_failed`
     /// and `run_finally` which must run after. However, they already log a warning
     /// or error depending on the `on_failure` setting.
+    ///
+    /// BackOtter: under `--strict-exit`, none of these hooks runs once an
+    /// interrupt has been taken as a failure (its thread runs the global
+    /// failed hooks and exits 130): neither before `f`, nor after it.
     pub fn use_with<T>(&self, f: impl FnOnce() -> Result<T>) -> Result<T> {
+        crate::application::halt_if_interrupted();
         match self.run_before() {
-            Ok(()) => match f() {
-                Ok(result) => match self.run_after() {
-                    Ok(()) => {
-                        self.run_finally()?;
-                        Ok(result)
-                    }
-                    Err(err_after) => {
+            Ok(()) => {
+                let result = f();
+                crate::application::halt_if_interrupted();
+                match result {
+                    Ok(result) => match self.run_after() {
+                        Ok(()) => {
+                            self.run_finally()?;
+                            Ok(result)
+                        }
+                        Err(err_after) => {
+                            _ = self.run_finally();
+                            Err(err_after)
+                        }
+                    },
+                    Err(err_f) => {
+                        _ = self.run_failed();
                         _ = self.run_finally();
-                        Err(err_after)
+                        Err(err_f)
                     }
-                },
-                Err(err_f) => {
-                    _ = self.run_failed();
-                    _ = self.run_finally();
-                    Err(err_f)
                 }
-            },
+            }
             Err(err_before) => {
                 _ = self.run_failed();
                 _ = self.run_finally();

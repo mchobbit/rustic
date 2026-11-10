@@ -184,16 +184,13 @@ impl DiffCmd {
                     &[&path2],
                 )?
                 .entries()
-                .map(|item| -> RusticResult<_> {
-                    let ReadSourceEntry { path, node, .. } = item?;
-                    let path = if is_dir {
-                        // remove given path prefix for dirs as local path
-                        path.strip_prefix(&path2).unwrap().to_path_buf()
-                    } else {
-                        // ensure that we really get the filename if local path is a file
-                        path2.file_name().unwrap().into()
+                .filter_map(|item| -> Option<RusticResult<_>> {
+                    let ReadSourceEntry { path, node, .. } = match item {
+                        Ok(entry) => entry,
+                        Err(err) => return Some(Err(err)),
                     };
-                    Ok((path, node))
+                    let path = local_path(&path, &path2, is_dir)?;
+                    Some(Ok((path, node)))
                 });
 
                 if self.only_identical {
@@ -218,6 +215,27 @@ impl DiffCmd {
         };
 
         Ok(())
+    }
+}
+
+/// BackOtter: the path a local entry is compared at, relative to the
+/// local directory `path2`; none for that directory itself, which this
+/// build's `LocalSource` gives (it keeps a backed-up directory's own
+/// node) but the snapshot side (`repo.ls` of its node) has no entry for.
+///
+/// # Arguments
+///
+/// * `path` - path of the local entry
+/// * `path2` - the local path compared
+/// * `is_dir` - whether `path2` is a directory
+fn local_path(path: &Path, path2: &Path, is_dir: bool) -> Option<PathBuf> {
+    if is_dir {
+        // remove given path prefix for dirs as local path
+        let path = path.strip_prefix(path2).unwrap();
+        (!path.as_os_str().is_empty()).then(|| path.to_path_buf())
+    } else {
+        // ensure that we really get the filename if local path is a file
+        Some(path2.file_name().unwrap().into())
     }
 }
 
@@ -609,4 +627,24 @@ fn diff_identical(
     }
     println!("checked {checked} files.");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// BackOtter: the local directory itself isn't compared (the snapshot
+    /// side has no entry for it), what is below it is, by its path below
+    /// it; a local file is compared by its name.
+    #[test]
+    fn local_path_skips_the_dir_itself() {
+        let dir = Path::new("/data/dir");
+        assert_eq!(local_path(dir, dir, true), None);
+        assert_eq!(
+            local_path(Path::new("/data/dir/a/b"), dir, true),
+            Some(PathBuf::from("a/b"))
+        );
+        let file = Path::new("/data/file");
+        assert_eq!(local_path(file, file, false), Some(PathBuf::from("file")));
+    }
 }

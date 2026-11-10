@@ -199,11 +199,15 @@ impl Runnable for EntryPoint {
         ctrlc::set_handler(move || tx.send(()).expect("Could not send signal on channel."))
             .expect("Error setting Ctrl-C handler");
 
+        // BackOtter: under `--strict-exit`, an interrupt exits 130 and runs the
+        // failed hooks, as BackOtter's restic does (but not for mount and
+        // webdav, which an interrupt ends as they are meant to end)
+        let strict = RUSTIC_APP.config().global.strict_exit;
         _ = std::thread::spawn(move || {
             // Wait for Ctrl-C
             rx.recv().expect("Could not receive from channel.");
             info!("Ctrl-C received, shutting down...");
-            RUSTIC_APP.shutdown(Shutdown::Graceful)
+            crate::application::shutdown_on_interrupt(strict)
         });
 
         // Run the subcommand

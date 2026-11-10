@@ -1,5 +1,8 @@
 //! Rustic Abscissa Application
-use std::{env, process};
+use std::{
+    env, process,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 use abscissa_core::{
     Application, Component, FrameworkError, FrameworkErrorKind, Shutdown, StandardPaths,
@@ -15,6 +18,62 @@ use crate::{commands::EntryPoint, config::RusticConfig};
 
 /// Application state
 pub static RUSTIC_APP: AppCell<RusticApp> = AppCell::new();
+
+/// BackOtter: set by the first shutdown under `--strict-exit`, so that an
+/// interrupt racing the main thread's own shutdown can't run both the after
+/// and the failed hooks: the first caller's hooks and exit code win.
+static SHUTTING_DOWN: AtomicBool = AtomicBool::new(false);
+
+/// BackOtter: set by a command that an interrupt ends as it is meant to end
+/// (`mount`, `webdav`: "press Ctrl-C to cancel"), before it blocks.
+static ENDED_BY_INTERRUPT: AtomicBool = AtomicBool::new(false);
+
+/// BackOtter: set under `--strict-exit` once an interrupt is taken as a
+/// failure, before its failed hooks run, so that the main thread runs no
+/// command-level hooks after it ([`halt_if_interrupted`]).
+static INTERRUPTED: AtomicBool = AtomicBool::new(false);
+
+/// BackOtter: the running command is one an interrupt ends as it is meant
+/// to: under `--strict-exit` too, the interrupt then exits 0 and runs the
+/// after hooks, as BackOtter's restic's `mount` exits 0 on one.
+pub(crate) fn ended_by_interrupt() {
+    ENDED_BY_INTERRUPT.store(true, Ordering::SeqCst);
+}
+
+/// BackOtter: under `--strict-exit`, once an interrupt is taken as a
+/// failure, the main thread stops here for good (the interrupt's thread
+/// runs the failed hooks and exits 130), so that no command-level hooks run
+/// after the interrupt, as BackOtter's restic runs none of its own after a
+/// cancel. Without the option this does nothing.
+pub(crate) fn halt_if_interrupted() {
+    if INTERRUPTED.load(Ordering::SeqCst) {
+        loop {
+            std::thread::park();
+        }
+    }
+}
+
+/// BackOtter: how an interrupt (SIGINT, SIGTERM, SIGHUP) shuts rustic down:
+/// gracefully with exit status 0, as stock rustic does, or, under
+/// `--strict-exit`, as a failure with exit status 130, as BackOtter's restic
+/// does, so that the failed hooks run, not the after hooks; but gracefully
+/// for a command an interrupt `ends` as it is meant to ([`ended_by_interrupt`]).
+pub(crate) const fn interrupt_shutdown(strict: bool, ends: bool) -> (Shutdown, i32) {
+    if strict && !ends {
+        (Shutdown::Crash, 130)
+    } else {
+        (Shutdown::Graceful, 0)
+    }
+}
+
+/// BackOtter: shuts rustic down for an interrupt ([`interrupt_shutdown`]).
+pub(crate) fn shutdown_on_interrupt(strict: bool) -> ! {
+    let (shutdown, code) = interrupt_shutdown(strict, ENDED_BY_INTERRUPT.load(Ordering::SeqCst));
+    if matches!(shutdown, Shutdown::Crash) {
+        INTERRUPTED.store(true, Ordering::SeqCst);
+    }
+    RUSTIC_APP.shutdown_with_exitcode(shutdown, code)
+}
 
 // Constants
 pub mod constants {
@@ -126,6 +185,14 @@ impl Application for RusticApp {
 
     /// Shut down this application gracefully, exiting with given exit code.
     fn shutdown_with_exitcode(&self, shutdown: Shutdown, exit_code: i32) -> ! {
+        // BackOtter: under `--strict-exit`, only the first shutdown runs its
+        // hooks and exits; a second one (an interrupt during the first) waits
+        // for the process to end.
+        if RUSTIC_APP.config().global.strict_exit && SHUTTING_DOWN.swap(true, Ordering::SeqCst) {
+            loop {
+                std::thread::park();
+            }
+        }
         let hooks = &RUSTIC_APP.config().global.hooks;
         match shutdown {
             Shutdown::Crash => _ = hooks.run_failed(),
@@ -138,5 +205,19 @@ impl Application for RusticApp {
         }
 
         process::exit(exit_code);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn interrupt_shutdown_is_graceful_unless_strict() {
+        assert!(matches!(interrupt_shutdown(false, false), (Shutdown::Graceful, 0)));
+        assert!(matches!(interrupt_shutdown(true, false), (Shutdown::Crash, 130)));
+        // mount, webdav: an interrupt is how they end.
+        assert!(matches!(interrupt_shutdown(false, true), (Shutdown::Graceful, 0)));
+        assert!(matches!(interrupt_shutdown(true, true), (Shutdown::Graceful, 0)));
     }
 }

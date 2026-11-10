@@ -181,6 +181,8 @@ impl MountCmd {
             "mounting {}, press Ctrl-C to cancel...",
             mount_point.display()
         );
+        // BackOtter: an interrupt is how a mount ends (--strict-exit).
+        crate::application::ended_by_interrupt();
         mount(fs, mount_point, &[OsStr::new(&opt_string)])?;
 
         Ok(())

@@ -37,6 +37,7 @@ RusticConfig {
         metrics_labels: {},
         opentelemetry: None,
         show_time_offset: false,
+        strict_exit: false,
     },
     repository: AllRepositoryOptions {
         be: BackendOptions {

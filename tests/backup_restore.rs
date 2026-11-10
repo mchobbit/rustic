@@ -223,3 +223,51 @@ fn test_backup_and_restore_passes() -> TestResult<()> {
 
     Ok(())
 }
+
+/// BackOtter: a backup that leaves out a file it may not read saves its
+/// snapshot either way, and exits 0, as stock rustic does, or, with
+/// `--strict-exit` (or `RUSTIC_STRICT_EXIT`), 3, as BackOtter's restic does.
+/// Not as root, who reads it.
+#[test]
+#[cfg(unix)]
+fn test_backup_incomplete_exits_3_with_strict_exit() -> TestResult<()> {
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+    let temp_dir = setup()?;
+    let source = tempdir()?;
+    std::fs::write(source.path().join("ok"), "ok")?;
+    let secret = source.path().join("secret");
+    std::fs::write(&secret, "secret")?;
+    if std::fs::metadata(&secret)?.uid() == 0 {
+        return Ok(());
+    }
+    std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o000))?;
+
+    let backup = |strict: Option<&str>, env: bool| -> TestResult<i32> {
+        let mut runner = rustic_runner(&temp_dir)?;
+        _ = runner.env_remove("RUSTIC_STRICT_EXIT");
+        if env {
+            _ = runner.env("RUSTIC_STRICT_EXIT", "true");
+        }
+        _ = runner.arg("backup");
+        if let Some(flag) = strict {
+            _ = runner.arg(flag);
+        }
+        let output = runner.arg(source.path()).output()?;
+        Ok(output.status.code().unwrap_or(-1))
+    };
+    let codes = (
+        backup(None, false),
+        backup(Some("--strict-exit"), false),
+        backup(None, true),
+    );
+    std::fs::set_permissions(&secret, std::fs::Permissions::from_mode(0o644))?;
+    assert_eq!((codes.0?, codes.1?, codes.2?), (0, 3, 3));
+
+    rustic_runner(&temp_dir)?
+        .arg("snapshots")
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("total: 3 snapshot(s)"));
+    Ok(())
+}

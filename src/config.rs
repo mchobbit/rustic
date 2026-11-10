@@ -259,6 +259,21 @@ pub struct GlobalOptions {
     #[clap(long, global = true, env = "RUSTIC_SHOW_TIME_OFFSET")]
     #[merge(strategy=conflate::bool::overwrite_false)]
     pub show_time_offset: bool,
+
+    /// Exit as BackOtter's restic does: 3 for an incomplete backup, 1 for a restore with errors, 130 when interrupted
+    ///
+    /// BackOtter: a backup that left out files, directories or metadata it
+    /// couldn't read still saves its snapshot, and exits 3; a restore that
+    /// couldn't set metadata (for any reason but the target not supporting
+    /// it, or not being root where restic doesn't count that), make a
+    /// special file, or remove or replace what was in its way exits 1; an
+    /// interrupt (SIGINT, SIGTERM, SIGHUP) exits 130 and runs the failed
+    /// hooks, not the after hooks (but `mount` and `webdav`, which an
+    /// interrupt ends, exit 0). Without it, these are warnings and exit 0,
+    /// as in stock rustic.
+    #[clap(long, global = true, env = "RUSTIC_STRICT_EXIT")]
+    #[merge(strategy=conflate::bool::overwrite_false)]
+    pub strict_exit: bool,
 }
 
 pub fn parse_labels(s: &str) -> Result<BTreeMap<String, String>> {
