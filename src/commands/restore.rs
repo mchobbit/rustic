@@ -35,6 +35,12 @@ pub(crate) struct RestoreCmd {
     #[clap(flatten)]
     opts: RestoreOptions,
 
+    // BackOtter: bko-holt's btrfs snapshots, each made exact from the one
+    // before it, clone what the live tree already has.
+    /// With --exact: files whose contents the snapshot's PATH has, restored at DIR (unchanged since), are cloned from there instead of written
+    #[clap(long, value_name = "PATH=DIR", requires = "exact")]
+    clone_from: Option<String>,
+
     /// List options
     #[clap(flatten)]
     ls_opts: LsOptions,
@@ -95,13 +101,25 @@ impl RestoreCmd {
         // or one others may write in, is never fresh. A whole snapshot has
         // no node of its own (empty metadata), and leaves the destination
         // as it is.
+        // BackOtter: under --exact the destination always gets the
+        // subfolder's metadata (it is then set only if it differs).
         let target = (node.is_dir()
             && node.meta != Metadata::default()
-            && restore_target_is_fresh(&self.dest))
+            && (self.opts.exact || restore_target_is_fresh(&self.dest)))
         .then(|| (PathBuf::new(), node.clone()));
         let ls = target.clone().into_iter().map(Ok).chain(repo.ls(&node, &ls_opts)?);
 
-        let dest = LocalDestination::new(&self.dest, true, !node.is_dir())?;
+        let mut dest = LocalDestination::new(&self.dest, true, !node.is_dir())?;
+        // BackOtter: --clone-from PATH=DIR, the same snapshot's PATH.
+        if let Some(spec) = &self.clone_from {
+            let Some((from, dir)) = spec.split_once('=') else {
+                bail!("--clone-from takes PATH=DIR, not {spec}");
+            };
+            let from_node = repo.node_from_snapshot_and_path(&snap, from)?;
+            let sources = repo.clone_sources(&from_node, std::path::Path::new(dir))?;
+            info!("{} files' contents to clone from {dir}", sources.len());
+            dest = dest.with_clone_sources(sources);
+        }
 
         let restore_infos = repo.prepare_restore(&opts, ls, &dest, dry_run)?;
         // BackOtter: what the restore couldn't do and only warned about, which
@@ -127,6 +145,12 @@ impl RestoreCmd {
             info!(
                 "using {} of existing file contents.",
                 bytes_size_to_string(restore_infos.matched_size)
+            );
+        }
+        if restore_infos.cloned_size > 0 {
+            info!(
+                "cloning {} of file contents.",
+                bytes_size_to_string(restore_infos.cloned_size)
             );
         }
         if restore_infos.restore_size == 0 {
