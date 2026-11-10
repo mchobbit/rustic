@@ -41,6 +41,13 @@ pub(crate) struct RestoreCmd {
     #[clap(long, value_name = "PATH=DIR", requires = "exact")]
     clone_from: Option<String>,
 
+    // BackOtter: bko-holt's main restore, whose target holds other
+    // subvolumes (not fresh) and whose root's metadata the backup holds
+    // only once its alias is left out.
+    /// The destination gets the subfolder's own metadata, set last, even when it isn't empty
+    #[clap(long)]
+    target_metadata: bool,
+
     /// List options
     #[clap(flatten)]
     ls_opts: LsOptions,
@@ -105,7 +112,7 @@ impl RestoreCmd {
         // subfolder's metadata (it is then set only if it differs).
         let target = (node.is_dir()
             && node.meta != Metadata::default()
-            && (self.opts.exact || restore_target_is_fresh(&self.dest)))
+            && (self.opts.exact || self.target_metadata || restore_target_is_fresh(&self.dest)))
         .then(|| (PathBuf::new(), node.clone()));
         let ls = target.clone().into_iter().map(Ok).chain(repo.ls(&node, &ls_opts)?);
 
