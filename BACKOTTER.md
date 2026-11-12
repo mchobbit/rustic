@@ -123,7 +123,8 @@ defaults stay stock rustic's, and BackOtter passes the options:
   BackOtter's restic now does too (see BACKOTTER.md in rustic_core).
 - `backup` keeps the attributes of files on FAT (hidden, system, archive
   cleared, a directory's read-only: `linux.fat_attrs`) and the options of
-  files on XFS (extent size hints, nodefrag, filestream, ...:
+  files on XFS (extent size hints, nodefrag, filestream, a directory's
+  realtime inheritance, `t`, which needs no realtime device, ...:
   `linux.xfs_options`), on Linux, as restic does, and `restore` puts them
   back there, last, before the file flags (an extent size hint also as
   soon as it creates the file, while it is empty); onto another file system
@@ -254,7 +255,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.8) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.9) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
