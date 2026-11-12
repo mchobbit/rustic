@@ -66,8 +66,12 @@ pub(crate) const fn interrupt_shutdown(strict: bool, ends: bool) -> (Shutdown, i
     }
 }
 
-/// BackOtter: shuts rustic down for an interrupt ([`interrupt_shutdown`]).
+/// BackOtter: shuts rustic down for an interrupt ([`interrupt_shutdown`]),
+/// after putting back the XFS options a restore took off for its late pass.
 pub(crate) fn shutdown_on_interrupt(strict: bool) -> ! {
+    // BackOtter: a restore stopped where it is gives the existing
+    // directories it took XFS options off those they had.
+    rustic_core::put_back_xfs_options();
     let (shutdown, code) = interrupt_shutdown(strict, ENDED_BY_INTERRUPT.load(Ordering::SeqCst));
     if matches!(shutdown, Shutdown::Crash) {
         INTERRUPTED.store(true, Ordering::SeqCst);

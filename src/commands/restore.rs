@@ -128,7 +128,12 @@ impl RestoreCmd {
             dest = dest.with_clone_sources(sources);
         }
 
-        let restore_infos = repo.prepare_restore(&opts, ls, &dest, dry_run)?;
+        // BackOtter: --dry-run-warmup without --dry-run restores nothing,
+        // so it plans as --dry-run does: nothing in the destination is made,
+        // removed or changed (an existing directory's XFS options taken off
+        // for the restore).
+        let plan_only = dry_run || config.global.dry_run_warmup;
+        let restore_infos = repo.prepare_restore(&opts, ls, &dest, plan_only)?;
         // BackOtter: what the restore couldn't do and only warned about, which
         // BackOtter's restic counts as errors (exit 1 under `--strict-exit`)
         let mut errors = restore_infos.stats.errors;

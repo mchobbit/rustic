@@ -128,8 +128,10 @@ defaults stay stock rustic's, and BackOtter passes the options:
   `linux.xfs_options`), on Linux, as restic does, and `restore` puts them
   back there, last, before the file flags (an extent size hint also as
   soon as it creates the file, while it is empty; a directory that was
-  there loses its options until then, so that the entries made in it
-  inherit none); onto another file system they are one warning per
+  there, the destination too, loses its options until then, so that the
+  entries made in it inherit none, and a restore that stops before, on an
+  error or an interrupt, puts them back); `--dry-run-warmup` without `--dry-run` plans as `--dry-run`
+  does, changing nothing in the destination; onto another file system they are one warning per
   restore. A dense restore leaves XFS's preallocated flag (`p`) on the
   files it preallocates, as restic's does (see BACKOTTER.md in
   rustic_core).
