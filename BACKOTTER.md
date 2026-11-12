@@ -127,10 +127,12 @@ defaults stay stock rustic's, and BackOtter passes the options:
   realtime inheritance, `t`, which needs no realtime device, ...:
   `linux.xfs_options`), on Linux, as restic does, and `restore` puts them
   back there, last, before the file flags (an extent size hint also as
-  soon as it creates the file, while it is empty); onto another file system
-  they are one warning per restore. A dense restore leaves XFS's
-  preallocated flag (`p`) on the files it preallocates, as restic's does
-  (see BACKOTTER.md in rustic_core).
+  soon as it creates the file, while it is empty; a directory that was
+  there loses its options until then, so that the entries made in it
+  inherit none); onto another file system they are one warning per
+  restore. A dense restore leaves XFS's preallocated flag (`p`) on the
+  files it preallocates, as restic's does (see BACKOTTER.md in
+  rustic_core).
 - `backup` reads files with holes by their data extents (`SEEK_DATA`,
   `SEEK_HOLE`, on Linux, FreeBSD, macOS and illumos) and gives the chunker
   zeros for the holes without reading them: the same bytes as plain
