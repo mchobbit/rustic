@@ -117,13 +117,21 @@ impl RestoreCmd {
         let ls = target.clone().into_iter().map(Ok).chain(repo.ls(&node, &ls_opts)?);
 
         let mut dest = LocalDestination::new(&self.dest, true, !node.is_dir())?;
-        // BackOtter: --clone-from PATH=DIR, the same snapshot's PATH.
+        // BackOtter: --clone-from PATH=DIR, the same snapshot's PATH. Nothing
+        // in the destination is cloned from when DIR holds it (a snapper
+        // snapshot inside the subvolume, seeded from it): it holds the seed,
+        // not what the snapshot has there, and a file cloned onto itself was
+        // emptied.
         if let Some(spec) = &self.clone_from {
             let Some((from, dir)) = spec.split_once('=') else {
                 bail!("--clone-from takes PATH=DIR, not {spec}");
             };
             let from_node = repo.node_from_snapshot_and_path(&snap, from)?;
-            let sources = repo.clone_sources(&from_node, std::path::Path::new(dir))?;
+            let sources = repo.clone_sources(
+                &from_node,
+                std::path::Path::new(dir),
+                Some(std::path::Path::new(&self.dest)),
+            )?;
             info!("{} files' contents to clone from {dir}", sources.len());
             dest = dest.with_clone_sources(sources);
         }
