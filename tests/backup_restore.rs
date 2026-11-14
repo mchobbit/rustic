@@ -53,12 +53,17 @@ fn setup() -> TestResult<TempDir> {
 fn test_backup_and_check_passes() -> TestResult<()> {
     let temp_dir = setup()?;
     let backup = src_snapshot()?.into_path();
+    // BackOtter: saved as "/src", so the snapshot keeps no metadata of the
+    // real directories above the source (/tmp, which tests running alongside
+    // change); the second backup then adds nothing however /tmp changes.
+    let as_path = "/src";
 
     {
         // Run `backup` for the first time
         rustic_runner(&temp_dir)?
             .arg("backup")
             .arg(backup.path())
+            .args(["--as-path", as_path])
             .assert()
             .success()
             .stderr(predicate::str::contains("successfully saved."));
@@ -78,6 +83,7 @@ fn test_backup_and_check_passes() -> TestResult<()> {
         rustic_runner(&temp_dir)?
             .arg("backup")
             .arg(backup.path())
+            .args(["--as-path", as_path])
             .assert()
             .success()
             .stderr(predicate::str::contains("Added to the repo: 0 B"))
