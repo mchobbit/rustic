@@ -51,6 +51,18 @@ than merged.
   `.X11-unix`, `.ICE-unix` and `systemd-private-*/tmp` directories
   (`rustic_core::restore_target_is_fresh`, looked at before the restore
   starts).
+- `restore --exact` and `--clone-from PATH=DIR` (only with `--exact`), for
+  bko-holt load's shared btrfs snapshots: rustic_core does the work
+  (`commands/restore/exact.rs`; see BACKOTTER.md there, with the known
+  limits). Since 0.11.4+backotter.14 (rustic_core 0.13.0+backotter.13),
+  as BackOtter's restic 0.19.1+backotter.12: a clone or a broken hard
+  link goes into a new `O_EXCL` temporary file renamed over the file, a
+  failed clone leaves the file as it was, a file whose link can't be
+  broken is left as it is (an error), a hard-link group already exactly
+  the snapshot's keeps its inode, restricting flags come off only for
+  what the restore changes and go back on the other names of a file it
+  replaced, `--delete` removes after the walk, and a second `--exact`
+  restore over a matching tree changes nothing (mount it `noatime`).
 - `restore` (and the TUI's) passes the snapshot's origin to rustic_core
   (`RestoreOptions::origin`, from its program version): in a snapshot of
   BackOtter's restic or rustic (`+backotter`) a node's missing attributes
@@ -259,7 +271,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.10) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.13) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
