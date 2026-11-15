@@ -76,7 +76,9 @@ than merged.
   (no `O_NOATIME`), an entry that matches but for its atime gets that
   back alone, which moves no ctime there, so a second `--exact` restore
   changes nothing on NetBSD too (.15 set every compared file's metadata
-  again).
+  again). Don't mount a NetBSD destination `noatime`: its FFS then takes
+  no atime from `utimensat(2)` and says nothing, so every restored atime
+  is lost there.
 - `restore` (and the TUI's) passes the snapshot's origin to rustic_core
   (`RestoreOptions::origin`, from its program version): in a snapshot of
   BackOtter's restic or rustic (`+backotter`) a node's missing attributes
