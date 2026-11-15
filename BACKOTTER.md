@@ -71,6 +71,12 @@ than merged.
   error for the files that were to get them, not a panic, and the later
   names of a hard-link group `--exact` breaks are removed early, so that
   an unexpected immutable name of their old file goes too.
+  Since 0.11.4+backotter.16 (rustic_core 0.13.0+backotter.15): on NetBSD,
+  whose FFS moves a file's atime on the reads that verify its contents
+  (no `O_NOATIME`), an entry that matches but for its atime gets that
+  back alone, which moves no ctime there, so a second `--exact` restore
+  changes nothing on NetBSD too (.15 set every compared file's metadata
+  again).
 - `restore` (and the TUI's) passes the snapshot's origin to rustic_core
   (`RestoreOptions::origin`, from its program version): in a snapshot of
   BackOtter's restic or rustic (`+backotter`) a node's missing attributes
@@ -279,7 +285,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.14) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.15) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
