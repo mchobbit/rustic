@@ -63,6 +63,14 @@ than merged.
   what the restore changes and go back on the other names of a file it
   replaced, `--delete` removes after the walk, and a second `--exact`
   restore over a matching tree changes nothing (mount it `noatime`).
+  Since 0.11.4+backotter.15 (rustic_core 0.13.0+backotter.14): `--delete`
+  leaves what is a snapshot entry under another name in a
+  case-insensitive directory (`SAME` for `same`: .14 removed it after
+  planning the file, then panicked, exit 134, the rest of the restore
+  undone), a file that can't be read for the blobs planned from it is an
+  error for the files that were to get them, not a panic, and the later
+  names of a hard-link group `--exact` breaks are removed early, so that
+  an unexpected immutable name of their old file goes too.
 - `restore` (and the TUI's) passes the snapshot's origin to rustic_core
   (`RestoreOptions::origin`, from its program version): in a snapshot of
   BackOtter's restic or rustic (`+backotter`) a node's missing attributes
@@ -271,7 +279,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.13) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.14) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
