@@ -280,6 +280,22 @@ defaults stay stock rustic's, and BackOtter passes the options:
   (then the run exits 130 with that snapshot saved). Off by default:
   then these stay warnings, a backup or restore exits 0 and an interrupt
   exits 0 with the after hooks, as in stock rustic.
+- Since 0.11.4+backotter.17 (rustic_core 0.13.0+backotter.17): paths past
+  `PATH_MAX` (Linux and Android) are backed up and restored whole, a tree
+  deeper than a path a system call takes (4096 bytes) included; stock
+  rustic and 0.11.4+backotter.16 left out of a backup everything past it,
+  warning "File name too long" and exiting 0 without `--strict-exit`, and
+  couldn't restore it (`ENAMETOOLONG`). BackShot2's corpus case fail-001
+  plants one (rustic_core 0.13.0+backotter.16, `walkdir::short_path`; see
+  BACKOTTER.md there). It also takes two of RustAudit1's fixes: R2-01, a
+  restored file with btrfs's compression property and immutable or
+  append-only has its flags read back after `FS_IOC_FSSETXATTR` and all
+  set through `FS_IOC_SETFLAGS` where they didn't take (on OpenZFS 2.2 it
+  came back immutable instead of append-only); and R4-02, directory
+  entries' names are read through the entry pointer, not libc's
+  fixed-size `d_name` (undefined behaviour on illumos and Haiku and in the
+  vendored walkdir's noatime reads; nothing read changes). rustic_core
+  0.13.0+backotter.18 (RustAudit1 R3-01, R4-01) isn't taken yet.
 
 ## Building
 
@@ -287,7 +303,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.15) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.17) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
