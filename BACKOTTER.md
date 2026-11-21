@@ -320,6 +320,20 @@ defaults stay stock rustic's, and BackOtter passes the options:
   `$TMPDIR` on XFS the limit stays about 40 KB (14 KB at worst: 255-byte
   names under a 495-byte `$TMPDIR`); a deeper path fails (`ELOOP`) as
   before (BACKOTTER.md in rustic_core).
+- Since 0.11.4+backotter.21 (rustic_core 0.13.0+backotter.21, RustAudit1's
+  re-audit of paths past `PATH_MAX`, XR1-01 to XR2-04): a backup warns
+  about a custom ignore file, `.gitignore` or `.git` past `PATH_MAX`, which
+  the ignore crate can't read, and counts it as incomplete (exit 3 with
+  `--strict-exit`), where .16 to .20 backed up what it excludes without a
+  word. Messages name a long path itself, not the short one under
+  `$TMPDIR/.bko-longpath-PID-N` (gone at exit). Why a long path can't be
+  reached (no directory for the links in `$TMPDIR`, a link refused) is
+  warned about once, where .16 to .20 said only "File name too long" for
+  each path. The links are made in `$TMPDIR`'s canonical path, so a
+  symbolic link in `$TMPDIR` no longer halves the depth reached, and a
+  `$TMPDIR` of 501 to 1024 bytes is served again where it takes links to
+  2048 bytes (.19 and .20 refused it everywhere). ext2/3/4 on 2 KiB
+  blocks takes 1000-byte prefixes, as on 1 KiB blocks.
 
 ## Building
 
@@ -327,7 +341,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.20) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.21) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
