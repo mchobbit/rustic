@@ -296,6 +296,17 @@ defaults stay stock rustic's, and BackOtter passes the options:
   fixed-size `d_name` (undefined behaviour on illumos and Haiku and in the
   vendored walkdir's noatime reads; nothing read changes). rustic_core
   0.13.0+backotter.18 (RustAudit1 R3-01, R4-01) isn't taken yet.
+- Since 0.11.4+backotter.19 (rustic_core 0.13.0+backotter.19): paths past
+  `PATH_MAX` are kept with `$TMPDIR` on XFS too. 0.11.4+backotter.17 reached
+  them through symbolic links to prefixes of up to 2048 bytes, and XFS
+  refuses a link's target over 1024 (ext2/3/4 on 1 KiB blocks, over 1023):
+  there a backup still warned "File name too long" and left the long paths
+  out (29 entries backed up, 24 restored). The prefixes are now at most
+  1000 bytes. It also takes rustic_core 0.13.0+backotter.18, RustAudit1's
+  R3-01 (FreeBSD and NetBSD extended attributes are read by their names'
+  bytes, so a non-UTF-8 name keeps its value) and R4-01 (illumos skips, with
+  a warning, a snapshot's attribute names that aren't attribute files: '',
+  '.', '..', a '/', NUL, the system views).
 
 ## Building
 
@@ -303,7 +314,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.17) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.19) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
