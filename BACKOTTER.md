@@ -295,7 +295,8 @@ defaults stay stock rustic's, and BackOtter passes the options:
   entries' names are read through the entry pointer, not libc's
   fixed-size `d_name` (undefined behaviour on illumos and Haiku and in the
   vendored walkdir's noatime reads; nothing read changes). rustic_core
-  0.13.0+backotter.18 (RustAudit1 R3-01, R4-01) isn't taken yet.
+  0.13.0+backotter.18 (RustAudit1 R3-01, R4-01) was taken in
+  0.11.4+backotter.19.
 - Since 0.11.4+backotter.19 (rustic_core 0.13.0+backotter.19): paths past
   `PATH_MAX` are kept with `$TMPDIR` on XFS too. 0.11.4+backotter.17 reached
   them through symbolic links to prefixes of up to 2048 bytes, and XFS
@@ -307,6 +308,18 @@ defaults stay stock rustic's, and BackOtter passes the options:
   bytes, so a non-UTF-8 name keeps its value) and R4-01 (illumos skips, with
   a warning, a snapshot's attribute names that aren't attribute files: '',
   '.', '..', a '/', NUL, the system views).
+- Since 0.11.4+backotter.20 (rustic_core 0.13.0+backotter.20): paths past
+  `PATH_MAX` are reached through links to prefixes of up to 2048 bytes
+  again where `$TMPDIR`'s file system takes such a link, and of up to 1000
+  only where it doesn't (XFS; ext2/3/4 on 1 KiB blocks), decided once per
+  run. A system call follows at most 40 links in a path (`ELOOP` past
+  it), so 0.11.4+backotter.19's 1000-byte prefixes everywhere had cut the
+  deepest path kept from about 80 KB to about 40 KB (36 KB with 200-byte
+  names) with `$TMPDIR` on tmpfs, ext4 or btrfs too; a tree of 50 KB paths
+  that .17 kept left its deepest paths out of a backup there. With
+  `$TMPDIR` on XFS the limit stays about 40 KB (14 KB at worst: 255-byte
+  names under a 495-byte `$TMPDIR`); a deeper path fails (`ELOOP`) as
+  before (BACKOTTER.md in rustic_core).
 
 ## Building
 
@@ -314,7 +327,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.19) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.20) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
