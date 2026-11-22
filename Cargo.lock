@@ -5418,7 +5418,7 @@ dependencies = [
 
 [[package]]
 name = "rustic-rs"
-version = "0.12.0"
+version = "0.12.0+backotter.1"
 dependencies = [
  "abscissa_core",
  "anyhow",
@@ -5533,9 +5533,8 @@ checksum = "fbcebf2228827bc4b61cb54dfd84cf43aacf06ca2dfe4c014b136a0e32b876e2"
 
 [[package]]
 name = "rustic_core"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "51e447f0f0a43c7ad87be4c0bcf3390ad7169a0152f4ae523d23f3a0be360c00"
+version = "0.14.0+backotter.1"
+source = "git+https://github.com/mchobbit/rustic_core.git?branch=backotter#f0d01fd09d1d4e89cc8759ba5ee712fc0686fa8a"
 dependencies = [
  "aes256ctr_poly1305aes",
  "backon",
@@ -5562,6 +5561,7 @@ dependencies = [
  "integer-sqrt",
  "itertools 0.15.0",
  "jiff",
+ "libc",
  "lockable",
  "log",
  "nix 0.32.0",
@@ -7150,9 +7150,9 @@ dependencies = [
 [[package]]
 name = "walkdir"
 version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29790946404f91d9c5d06f9874efddea1dc06c5efe94541a7d6863108e3a5e4b"
+source = "git+https://github.com/mchobbit/rustic_core.git?branch=backotter#f0d01fd09d1d4e89cc8759ba5ee712fc0686fa8a"
 dependencies = [
+ "libc",
  "same-file",
  "winapi-util",
 ]

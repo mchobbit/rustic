@@ -273,8 +273,10 @@ pub struct GlobalOptions {
     /// special file, or remove or replace what was in its way exits 1; an
     /// interrupt (SIGINT, SIGTERM, SIGHUP) exits 130 and runs the failed
     /// hooks, not the after hooks (but `mount` and `webdav`, which an
-    /// interrupt ends, exit 0). Without it, these are warnings and exit 0,
-    /// as in stock rustic.
+    /// interrupt ends, exit 0). Without it, a restore's errors are warnings
+    /// and an interrupt exits 0, as in stock rustic; a backup exits as stock
+    /// rustic 0.12.0 does: 3 (after hooks) only where files or directories
+    /// couldn't be read (the snapshot's `error_count`), not for metadata.
     #[clap(long, global = true, env = "RUSTIC_STRICT_EXIT")]
     #[merge(strategy=conflate::bool::overwrite_false)]
     pub strict_exit: bool,

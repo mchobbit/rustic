@@ -183,7 +183,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
   modified, as BackOtter's restic reports it as updated.
 - `merge` gives the snapshot it makes the program version of this build
   (`+backotter`) only if every snapshot merged is BackOtter's; otherwise
-  the version without `+backotter` (`rustic 0.11.4`), so that a stock
+  the version without `+backotter` (`rustic 0.12.0`), so that a stock
   snapshot's missing attributes stay unknown (see BACKOTTER.md in
   rustic_core).
 - `restore` makes files that had holes sparse again, where it restores them
@@ -258,9 +258,11 @@ defaults stay stock rustic's, and BackOtter passes the options:
 - `--strict-exit` (a global option; `RUSTIC_STRICT_EXIT`, or
   `strict-exit = true` in `[global]`) exits as BackOtter's restic does. A
   backup that left out entries, or parts of their metadata, it couldn't
-  read still saves its snapshot, and exits 3 (`at least one source file
-  could not be read: ...`); what counts is what restic counts (see
-  `SnapshotSummary::items_incomplete` in rustic_core's BACKOTTER.md). A
+  read still saves its snapshot, and exits 3 as a failure (`at least one
+  source file could not be read: ...`, or with `--json`/`--json-progress`
+  upstream's JSON `exit_error` line, code 3); what counts is what restic
+  counts (see `SnapshotSummary::items_incomplete` in rustic_core's
+  BACKOTTER.md), which is more than stock rustic's `error_count` (below). A
   restore that couldn't set metadata for a reason other than the target
   not supporting it (or, not running as root, one restic doesn't count
   then), make a special file, or remove or replace what was in its way
@@ -278,8 +280,13 @@ defaults stay stock rustic's, and BackOtter passes the options:
   restic, which cancels what is under way, a backup's snapshot whose save
   was already under way while the failed hooks run can still be written
   (then the run exits 130 with that snapshot saved). Off by default:
-  then these stay warnings, a backup or restore exits 0 and an interrupt
-  exits 0 with the after hooks, as in stock rustic.
+  then a restore exits 0 with these as warnings and an interrupt exits 0
+  with the after hooks, as in stock rustic; and a backup exits as stock
+  rustic does since v0.12.0 (ed88576, #1908): 3 where rustic_core's
+  `SnapshotSummary::error_count` isn't 0 (entries the walk or the archiver
+  couldn't read, not parts of their metadata), as a graceful exit (`Warning:
+  at least one source file could not be read`, the after hooks), else 0.
+  Before 0.12.0+backotter.1 such a backup exited 0 without the option.
 - Since 0.11.4+backotter.17 (rustic_core 0.13.0+backotter.17): paths past
   `PATH_MAX` (Linux and Android) are backed up and restored whole, a tree
   deeper than a path a system call takes (4096 bytes) included; stock
@@ -338,6 +345,10 @@ defaults stay stock rustic's, and BackOtter passes the options:
   fixes in rustic_core's FreeBSD/NetBSD extended attribute and illumos
   extended attribute backends (formatting and doc wording); it behaves as
   .21 does.
+- Since 0.12.0+backotter.1 (rustic_core 0.14.0+backotter.1): on rustic
+  v0.12.0 and rustic_core 0.14.0 (see "Base: rustic v0.12.0" below); a
+  backup that couldn't read some source files exits 3 without
+  `--strict-exit` too, as stock rustic now does.
 
 ## Building
 
@@ -345,7 +356,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.22) and rustic_core's walkdir (see
+names (`bko_core`, now 0.14.0+backotter.1) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -360,7 +371,8 @@ rustic_core's `backotter` branch moves:
    GIT_CONFIG_VALUE_0=https://github.com/mchobbit/rustic_core.git`.
 2. Check `git diff Cargo.lock`: only rustic-rs's version and the
    rustic_core and walkdir entries should change. Revert anything else
-   cargo re-resolved (windows-sys and getrandom, for each of .19 to .22),
+   cargo re-resolved (windows-sys and getrandom, for each of .19 to .22
+   and for 0.12.0+backotter.1),
    and check that `cargo metadata --locked` takes the lock.
 3. Commit Cargo.lock.
 4. When rustic_core's version changes, change `bko_core` in
@@ -427,111 +439,74 @@ linker for DragonFly. Cargo.lock has rustix 1.1.6 rather than 1.1.4 for it:
 1.1.4 wants source-specific multicast socket options for DragonFly that
 libc doesn't have there, and doesn't build.
 
-## Upstream fixes
+## Base: rustic v0.12.0
 
-0.11.4+backotter.6 takes one fix from rustic's `main` after 0.11.4,
-cherry-picked (`git cherry-pick -x`): 8e5d8af (#1898) `docs` prints the
-URL before trying to open it, so a failure to open it still shows it.
+Since 2026-11-22 the branch is on rustic v0.12.0 (c4ce22f, #1899, which
+takes rustic_core 0.14.0 and rustic_backend 0.8.0), version
+0.12.0+backotter.1 on rustic_core 0.14.0+backotter.1 (see "Base:
+rustic_core 0.14.0" in BACKOTTER.md there); it was on v0.11.4
+(0.11.4+backotter.1 to .22, on rustic_core 0.13.0+backotter.N). The rebase
+kept every BackOtter commit but for these:
 
-0.11.4+backotter.7 is 0.11.4+backotter.6 on rustic_core 0.13.0+backotter.6,
-which restores a new Haiku volume's root (its empty Tracker `trash` no longer
-makes it look used); only Haiku's binary differs.
+- d00e3a7, the cherry-pick of 8e5d8af (#1898, `docs` prints the URL before
+  trying to open it), which v0.12.0 has.
+- The commits that only moved Cargo.lock's pin of rustic_core (21c7087,
+  77a296d, 42a7f4c, 46f51d9, 758c062, ea44449, a1f210b): v0.12.0's lock
+  replaced theirs, so they were left empty. The rebased commits keep
+  v0.12.0's Cargo.lock as it is; the first commit on v0.12.0 to pin
+  rustic_core again is the one that makes 0.12.0+backotter.1. The versions
+  in Cargo.toml of the commits from before read 0.12.0+backotter.N with
+  their old N (their messages, build-backotter.sh's `bko_core` and their
+  BACKOTTER.md name 0.11.4's and 0.13.0's).
 
-0.11.4+backotter.8 is 0.11.4+backotter.7 on rustic_core 0.13.0+backotter.7:
-`--strict-exit`, restored parents of partial restores, rewrite's atimes,
-per-attribute xattr warnings, and diff's local top directory.
+With rustic_core 0.14.0's cherry-picks gone (they are upstream's: #544,
+#546, #547, #548, #585 to #592 (#590 and #634 with the fork's own parts
+kept, see there), #602, #607, #630, #632, #633, #634, #640),
+so are the Cargo.lock pins of 0.11.4+backotter.4 to .6: v0.12.0's lock has
+the same or newer releases (zstd 0.14.3, zstd-safe 8.3.0, zstd-sys 2.1.3,
+still zstd 1.5.7, so the same compressed bytes; rustls 0.23.46,
+rustls-webpki 0.103.17, ctutils 0.4.8, chacha20 0.10.2, rustix 1.1.6,
+which builds for DragonFly), and fixes two of the advisories left open
+before: suppaftp 10.0.2 (RUSTSEC-2026-0271, with opendal 0.59.5 and
+rustic_backend 0.8.0) and zip 9.6.1 (RUSTSEC-2026-0367..0369, -0429). Left
+as it is: rsa 0.9.10 (RUSTSEC-2023-0071), which has no fixed release.
 
-0.11.4+backotter.6 builds on rustic_core 0.13.0+backotter.5, which has
-these fixes from rustic_core's `main` after 0.13.0, cherry-picked (see
-BACKOTTER.md there for how the two that conflicted were resolved):
-52a1839 (#544) cache backend guarded by locks; c4059e3 (#548) and
-d56cc4a (#630) canonicalization errors name the path; 35aef00 (#547)
-the local backend's delete hook on a replaced file (in rustic_core's
-`crates/backend`, which this build doesn't use: rustic_backend 0.7.0
-comes from crates.io); 9d9e478 (#546) tree workers stop when the
-receiver closes; d7e097c (#585) no underflow in
-`BlobLocation::data_length`; 4589ea7 (#586) `repair snapshots` and file
-nodes without contents; be62e24 (#588) directory nodes without a
-subtree in `ls` and merges; 459bb53 (#589) no overflow in
-`can_coalesce`; f5b8fd6 (#591) `BlobCopier` checks blob bounds; 82b81d2
-(#592) bad scrypt parameters in key files refused; 0db92b6 (#607) tree
-loader threads joined before the index goes; b77ecc8 (#590) a restore
-refuses node paths that leave the destination (`..`, root, prefix);
-fba52fa (#587) `prune` and directory nodes without a subtree; 4c3d6fa
-(#633) `forget --keep-minutely` within one hour; 00bd025 (#632)
-`backup` compares inode numbers unless `--ignore-inode`, as restic;
-506a1da (#634) a restore's hard link over an entry at its name (the
-right link left, anything else but a directory replaced); b583e92 (#602)
-`init_with_config` takes `is_hot` from the repository.
+What came with v0.12.0 and changes what users see:
 
-Cargo.lock takes the first patched releases of crates this build ships
-that RustSec has advisories against: zstd 0.13.4, zstd-safe 7.4.0,
-zstd-sys 2.1.2 (zstd 1.5.7 still), rustls 0.23.46, rustls-webpki
-0.103.16, ctutils 0.4.4; and chacha20 0.10.2, as 0.10.1 is yanked: its
-SSE2 backend (picked without AVX2) runs an SSE4.1 instruction in the RNG
-behind every nonce and `Id::random`, SIGILL on CPUs with neither (AMD
-K8/K10, Core 2 Merom/Conroe; RustCrypto/stream-ciphers#579). Left as
-they are: suppaftp 8.0.5 (RUSTSEC-2026-0271, FTP command injection
-through CR/LF in arguments, for `opendal:ftp` repositories), fixed only
-in suppaftp 10, which needs opendal 0.59 and so a rustic_backend newer
-than 0.7.0: rustic_backend 0.8.0 (2026-11-17) has it, but needs
-rustic_core 0.14.0, so it comes with the rebase below (v0.12.0's lock has
-suppaftp 10.0.2, opendal 0.59.5); rsa 0.9.10 (RUSTSEC-2023-0071), which has no
-fixed release; zip 8.6.0 (RUSTSEC-2026-0367..0369, -0429), whose
-advisories are about extracting archives, which rustic never does
-(`dump` writes zip archives), and whose fix is zip 9, a breaking
-release; quinn-proto, h2, webpki-roots and webpki-root-certs, which this
-build doesn't compile; quick-xml 0.38.4 (RUSTSEC-2026-0194, -0195),
-which only self-update takes (the `release` feature, not built; this
-build has 0.41.0).
+- ed88576 (#1908): a backup that couldn't read some source files exits 3
+  without `--strict-exit` too, gracefully (after hooks), with `Warning: at
+  least one source file could not be read` (with `--json` or
+  `--json-progress`, JSON `error` lines and a final `exit_error`, code 3);
+  it counts rustic_core's `error_count` (#561). `--strict-exit` keeps its
+  own path (above): it exits 3 as a failure on `items_incomplete`, which
+  also counts parts of metadata, so where it counts more than
+  `error_count` it is the only one to exit 3; its JSON output is upstream's
+  `exit_error`. `test_backup_incomplete_exits_3_with_strict_exit` checks
+  both, and upstream's `test_backup_unreadable_file_exits_3` runs as it is.
+- 0051a02 (#1950): `copy` exits with an error when copying to a target
+  failed (it exited 0).
+- 8f5c891 (#1937): the TUI's `ls` doesn't panic on a directory node
+  without a subtree.
+- 143d073 (#1907): `[init]` in a config profile; ef5dd4b (#1952): `ls
+  --long --json`; 87a6272 (#1938): `mount` fixes (the `mount` feature,
+  which this build leaves out); 66383d8 (#1990), 5e34d1b (#1997, breaking)
+  dependency updates (dav-server 0.12, zip 9, cached 2, self_update 1.3).
+- rustic_core 0.14.0's own changes, among them #563 (backup paths no
+  longer merged into their parents), #637 (chunk size bounds), #639
+  (prune's rewrite: `keep-delete` is `keep-marked`), #638 (the chunker
+  hashes the whole window, as rustic_core 0.13.0+backotter did already:
+  the same chunks); see BACKOTTER.md there.
 
-Not ported, from rustic's `main`: 143d073 (#1907) `[init]` in a config
-profile, a feature.
+### Before v0.12.0
 
-Taken after 0.13.0+backotter.5 with no new version: 01fe284 (#640), in
-rustic_core's `crates/backend`, which this build doesn't use.
-
-Not ported, from rustic_core's `main`: 18fa55c (#642) an HTTP connect
-timeout, a feature; e01b17f (#553) iOS build, no
-BackOtter platform; ca81cfe (#549) and e574765 (#552) documentation
-only; b7ab1ee (#556) more reqwest options, a breaking feature; 6fa7b56
-(#559) serde and Merge for `ConfigOptions`, a feature; e97a7dc (#562)
-OpenDAL retries on one line, a feature; b78f648 (#561) unreadable files
-counted in the summary, a feature that changes snapshots' summaries;
-647d00f (#563) backup paths no longer merged, a breaking change of
-behaviour; 4871132 (#629) clippy fixes and dependency updates, breaking
-(`Node`'s and `IndexEntry`'s constructors removed; its advisory fixes
-are taken as above); e2b61aa (#558) HTTP options renamed, breaking;
-9565d4f (#580) a refactor, no fix; eb72c72 (#598) an HTTP read timeout,
-a feature. Those after 2026-11-05, in rustic_core 0.14.0 (#638 and #611
-done here already, #637, #639), are listed in BACKOTTER.md there.
-
-Not ported, from rustic's `main` after 2026-11-05, all released in v0.12.0
-(c4ce22f, #1899, 2026-11-17), which takes rustic_core 0.14.0 and
-rustic_backend 0.8.0:
-
-- 8f5c891 (#1937) the TUI's `ls` doesn't panic on a directory node without
-  a subtree: a fix, in the `tui` feature this build has.
-- 0051a02 (#1950) `copy` exits with an error when copying to a target
-  failed, where it exited 0: a fix, which changes the exit status.
-- ed88576 (#1908) a backup that couldn't read some source files exits 3,
-  as restic does: overlaps `--strict-exit` (above), and needs rustic_core's
-  #561 (not ported).
-- 87a6272 (#1938) `mount` doesn't panic on a device number over 32 bits or
-  an extended attribute name with a NUL: the `mount` feature, which this
-  build leaves out.
-- ef5dd4b (#1952) `ls --long --json`: a feature.
-- 7d75ca1 (#1963) cargo-binstall's download URL: packaging this build
-  doesn't use.
-- 66383d8 (#1990), 5e34d1b (#1997, breaking) dependency updates: newer
-  releases than the pins above (zstd 0.14.3, rustls-webpki 0.103.17,
-  ctutils 0.4.8, quick-xml 0.42.0), and the same rustix 1.1.6.
-- 2787a1f (#1920), 6504978 (#1881) documentation only.
-
-These come with a rebase onto v0.12.0 and rustic_core 0.14.0, which is
-pending: the user's decision (ForkAudit1 F9-01). It would also drop
-8e5d8af (#1898), the rustic_core cherry-picks, and the Cargo.lock pins
-above, and this section's dependency paragraphs would be rewritten.
+0.11.4+backotter.6 took 8e5d8af (#1898) from rustic's `main`,
+cherry-picked, and rustic_core 0.13.0+backotter.5, which had rustic_core's
+fixes above cherry-picked; .7 and .8 were .6 on rustic_core
+0.13.0+backotter.6 (a new Haiku volume's root) and .7 (`--strict-exit`,
+restored parents of partial restores, rewrite's atimes, per-attribute xattr
+warnings, diff's local top directory). rustic_core's 01fe284 (#640), in
+its `crates/backend`, which this build doesn't use, came after
+0.13.0+backotter.5 with no new version.
 
 ## Moving to a new rustic release
 
@@ -544,3 +519,14 @@ new rustic uses, then:
     cargo update -p rustic_core --precise SHA   # as in "Building"
     # set bko_core in build-backotter.sh to rustic_core's new version
     git push --force-with-lease origin backotter
+
+In the rebase, take the new release's Cargo.lock where ours conflicts (a
+lock-only commit is then left empty, and dropped), and give a conflicting
+version line `NEW+backotter.N`. After it the lock has crates.io's
+rustic_core, which `--precise SHA` can't take (it wants a version there):
+with rustic_core's `backotter` branch at SHA in the clone that
+`url.CLONE.insteadOf` names ("Building"), run `cargo update -p rustic_core
+-p walkdir`, which takes the patch, and check that the lock names SHA. Then
+revert the rest of what cargo re-resolved, as in "Building" (for v0.12.0:
+windows-sys 0.61.2 to 0.52.0 and getrandom 0.3.4 to 0.4.3 in dependency
+lists), and check `cargo metadata --locked`.

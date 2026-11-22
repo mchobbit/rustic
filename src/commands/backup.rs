@@ -462,11 +462,7 @@ impl BackupCmd {
     /// Back up one snapshot's sources and return its `error_count` and how
     /// many entries, or parts of their metadata, it left out because they
     /// couldn't be read (BackOtter: see [`IncompleteBackup`]).
-    fn backup_snapshot(
-        mut self,
-        source: PathList,
-        repo: &IndexedIdsRepo,
-    ) -> Result<(u64, u64)> {
+    fn backup_snapshot(mut self, source: PathList, repo: &IndexedIdsRepo) -> Result<(u64, u64)> {
         let config = RUSTIC_APP.config();
         let snapshot_opts = &config.backup.snapshots;
         if let Some(path) = &self.as_path {
