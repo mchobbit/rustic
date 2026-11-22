@@ -9,7 +9,7 @@ version=$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)
 [[ $version == *+backotter.* ]] || { echo "build-backotter: version is '$version', not X.Y.Z+backotter.N" >&2; exit 1; }
 # The lock must pin BackOtter's rustic_core of this version, and its
 # walkdir (BACKOTTER.md, "Building"): after rustic_core's version changes,
-# cargo update -p rustic_core -p walkdir refreshes the lock.
+# cargo update -p rustic_core --precise SHA refreshes both pins.
 bko_core=0.13.0+backotter.22
 locked() {  # the version and source Cargo.lock records for package $1
     awk -v name="$1" '$0 == "name = \"" name "\"" {p = 1; next}
@@ -19,7 +19,7 @@ locked() {  # the version and source Cargo.lock records for package $1
 }
 core_version=$(locked rustic_core | cut -d' ' -f1)
 [[ $core_version == "$bko_core" ]] || {
-    echo "build-backotter: Cargo.lock pins rustic_core $core_version; expected $bko_core: push rustic_core and run cargo update -p rustic_core" >&2
+    echo "build-backotter: Cargo.lock pins rustic_core $core_version; expected $bko_core: run cargo update -p rustic_core --precise SHA (BACKOTTER.md, \"Building\")" >&2
     exit 1
 }
 walkdir_source=$(locked walkdir | cut -d' ' -f2)

@@ -350,9 +350,20 @@ BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
 
-1. Run `cargo update -p rustic_core -p walkdir`.
-2. Commit Cargo.lock.
-3. When rustic_core's version changes, change `bko_core` in
+1. Run `cargo update -p rustic_core --precise SHA`, SHA being the commit
+   of rustic_core's `backotter` branch to take; walkdir's pin moves with
+   it (one git source). Without `--precise` cargo takes the branch's tip
+   on GitHub, which lacks commits not pushed yet. Until they are, let git
+   fetch them from a local clone of rustic_core, for this and for the
+   build: `CARGO_NET_GIT_FETCH_WITH_CLI=true GIT_CONFIG_COUNT=1
+   GIT_CONFIG_KEY_0=url.CLONE.insteadOf
+   GIT_CONFIG_VALUE_0=https://github.com/mchobbit/rustic_core.git`.
+2. Check `git diff Cargo.lock`: only rustic-rs's version and the
+   rustic_core and walkdir entries should change. Revert anything else
+   cargo re-resolved (windows-sys and getrandom, for each of .19 to .22),
+   and check that `cargo metadata --locked` takes the lock.
+3. Commit Cargo.lock.
+4. When rustic_core's version changes, change `bko_core` in
    build-backotter.sh to match.
 
 To build against a local copy of rustic_core instead (for tests), point
@@ -530,5 +541,6 @@ new rustic uses, then:
     git fetch upstream --tags
     git rebase --onto vNEW vOLD backotter
     # set Cargo.toml's version to "NEW+backotter.1"
-    cargo update -p rustic_core
+    cargo update -p rustic_core --precise SHA   # as in "Building"
+    # set bko_core in build-backotter.sh to rustic_core's new version
     git push --force-with-lease origin backotter
