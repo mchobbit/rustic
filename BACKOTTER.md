@@ -334,6 +334,10 @@ defaults stay stock rustic's, and BackOtter passes the options:
   `$TMPDIR` of 501 to 1024 bytes is served again where it takes links to
   2048 bytes (.19 and .20 refused it everywhere). ext2/3/4 on 2 KiB
   blocks takes 1000-byte prefixes, as on 1 KiB blocks.
+- Since 0.11.4+backotter.22 (rustic_core 0.13.0+backotter.22): RustAudit1's
+  fixes in rustic_core's FreeBSD/NetBSD extended attribute and illumos
+  extended attribute backends (formatting and doc wording); it behaves as
+  .21 does.
 
 ## Building
 
@@ -341,7 +345,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.13.0+backotter.21) and rustic_core's walkdir (see
+names (`bko_core`, now 0.13.0+backotter.22) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
