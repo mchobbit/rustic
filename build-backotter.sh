@@ -52,6 +52,12 @@ for t in "${targets[@]}"; do
         echo "build-backotter: $t: a static glibc build dies with SIGFPE in NSS (a file owner without a name, systemd in nsswitch.conf), and a dynamic one isn't portable; build $(musl_of "$t") (BACKOTTER.md, \"Building\")" >&2
         exit 1
     }
+    # The static check below needs readelf: without it the check's pipeline
+    # would fail inside its if, and a dynamic binary go to dist/ unchecked.
+    [[ $t != *-linux-* ]] || command -v readelf >/dev/null || {
+        echo "build-backotter: readelf (binutils) is needed to check that the Linux binary is static" >&2
+        exit 1
+    }
 done
 
 mkdir -p dist
@@ -74,9 +80,14 @@ for t in "${targets[@]}"; do
     # replace this build with stock rustic.  Without PROJECT_VERSION, which
     # rustic's own build.sh sets from git describe, the version is Cargo's.
     env -u PROJECT_VERSION RUSTFLAGS="$flags" cargo build --release --locked --target "$t" "${features[@]}"
-    if [[ $t == *-linux-* ]] && readelf -l "target/$t/release/rustic" | grep -q 'program interpreter'; then
-        echo "build-backotter: target/$t/release/rustic is linked dynamically" >&2
-        exit 1
+    if [[ $t == *-linux-* ]]; then
+        # Not readelf | grep -q in the if: a readelf that failed, or one that
+        # grep's early exit cut off (pipefail), would let the binary through.
+        phdrs=$(readelf -l "target/$t/release/rustic")
+        [[ $phdrs != *'program interpreter'* ]] || {
+            echo "build-backotter: target/$t/release/rustic is linked dynamically" >&2
+            exit 1
+        }
     fi
     out=dist/rustic-backotter-$version-$t
     cp "target/$t/release/rustic" "$out"

@@ -368,7 +368,8 @@ Linux binaries are static, as BackOtter's restic is: a dynamic one needs
 `/lib64/ld-linux-x86-64.so.2` and a glibc at least as new as the one it was
 built against, and NixOS has only a stub loader there that refuses to start
 it. Build them for `x86_64-unknown-linux-musl` (static by default; the
-script refuses a Linux binary with a program interpreter). With no target
+script refuses a Linux binary with a program interpreter, and stops before
+building one without `readelf` (binutils) to check it). With no target
 on a glibc Linux (`*-linux-gnu*`) the script builds the musl target of the
 same name, ABI suffix kept: `-linux-gnu` becomes `-linux-musl`
 (`x86_64-unknown-linux-musl`, `armv7-unknown-linux-musleabihf` on an
