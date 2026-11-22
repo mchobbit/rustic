@@ -289,6 +289,7 @@ can be overwritten in the source-specific configuration, see below.
 | tags               | Array of tags for the backup.                                                                                  | []                       |               | --tag                   |
 | time               | Set the time saved in the snapshot.                                                                            | current time             |               | --time                  |
 | set-atime          | Set access time: "yes" (the file's own), "mtime" or "no".                                                      | "mtime"                  | "yes"         | --set-atime             |
+| set-blockdev       | How block devices are stored: "special" (as a device) or "file" (their contents).                              | "special"                | "file"        | --set-blockdev          |
 | set-ctime          | Set change time: "yes" (the file's own), "mtime" or "no".                                                      | "yes"                    |               | --set-ctime             |
 | set-devid          | Set device ID: "yes", "no" or "hardlink" (only for hard-linked files).                                         | "hardlink"               | "yes"         | --set-devid             |
 | set-xattrs         | Set extended attributes: "yes" or "no".                                                                        | "yes"                    |               | --set-xattrs            |
