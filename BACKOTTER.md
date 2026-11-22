@@ -463,7 +463,9 @@ K8/K10, Core 2 Merom/Conroe; RustCrypto/stream-ciphers#579). Left as
 they are: suppaftp 8.0.5 (RUSTSEC-2026-0271, FTP command injection
 through CR/LF in arguments, for `opendal:ftp` repositories), fixed only
 in suppaftp 10, which needs opendal 0.59 and so a rustic_backend newer
-than crates.io's 0.7.0; rsa 0.9.10 (RUSTSEC-2023-0071), which has no
+than 0.7.0: rustic_backend 0.8.0 (2026-11-17) has it, but needs
+rustic_core 0.14.0, so it comes with the rebase below (v0.12.0's lock has
+suppaftp 10.0.2, opendal 0.59.5); rsa 0.9.10 (RUSTSEC-2023-0071), which has no
 fixed release; zip 8.6.0 (RUSTSEC-2026-0367..0369, -0429), whose
 advisories are about extracting archives, which rustic never does
 (`dump` writes zip archives), and whose fix is zip 9, a breaking
@@ -490,7 +492,35 @@ behaviour; 4871132 (#629) clippy fixes and dependency updates, breaking
 (`Node`'s and `IndexEntry`'s constructors removed; its advisory fixes
 are taken as above); e2b61aa (#558) HTTP options renamed, breaking;
 9565d4f (#580) a refactor, no fix; eb72c72 (#598) an HTTP read timeout,
-a feature.
+a feature. Those after 2026-11-05, in rustic_core 0.14.0 (#638 and #611
+done here already, #637, #639), are listed in BACKOTTER.md there.
+
+Not ported, from rustic's `main` after 2026-11-05, all released in v0.12.0
+(c4ce22f, #1899, 2026-11-17), which takes rustic_core 0.14.0 and
+rustic_backend 0.8.0:
+
+- 8f5c891 (#1937) the TUI's `ls` doesn't panic on a directory node without
+  a subtree: a fix, in the `tui` feature this build has.
+- 0051a02 (#1950) `copy` exits with an error when copying to a target
+  failed, where it exited 0: a fix, which changes the exit status.
+- ed88576 (#1908) a backup that couldn't read some source files exits 3,
+  as restic does: overlaps `--strict-exit` (above), and needs rustic_core's
+  #561 (not ported).
+- 87a6272 (#1938) `mount` doesn't panic on a device number over 32 bits or
+  an extended attribute name with a NUL: the `mount` feature, which this
+  build leaves out.
+- ef5dd4b (#1952) `ls --long --json`: a feature.
+- 7d75ca1 (#1963) cargo-binstall's download URL: packaging this build
+  doesn't use.
+- 66383d8 (#1990), 5e34d1b (#1997, breaking) dependency updates: newer
+  releases than the pins above (zstd 0.14.3, rustls-webpki 0.103.17,
+  ctutils 0.4.8, quick-xml 0.42.0), and the same rustix 1.1.6.
+- 2787a1f (#1920), 6504978 (#1881) documentation only.
+
+These come with a rebase onto v0.12.0 and rustic_core 0.14.0, which is
+pending: the user's decision (ForkAudit1 F9-01). It would also drop
+8e5d8af (#1898), the rustic_core cherry-picks, and the Cargo.lock pins
+above, and this section's dependency paragraphs would be rewritten.
 
 ## Moving to a new rustic release
 
