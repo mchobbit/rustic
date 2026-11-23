@@ -382,6 +382,20 @@ defaults stay stock rustic's, and BackOtter passes the options:
   v0.12.0 and rustic_core 0.14.0 (see "Base: rustic v0.12.0" below); a
   backup that couldn't read some source files exits 3 without
   `--strict-exit` too, as stock rustic now does.
+- Since 0.12.0+backotter.2 (rustic_core 0.14.0+backotter.2): the fixes of
+  ForkAudit1's re-run of 2026-11-23; rustic_core's BACKOTTER.md names each
+  as 0.14.0+backotter.2. Under `--strict-exit` an interrupt during a
+  `run-before` hook starts no more hook commands and no command (above).
+  A restore gives a file whose contents it couldn't restore none of the
+  snapshot's times, so the next restore writes it, and warns of a failed
+  chown, chmod or set-times with its cause on a second line. Restoring a
+  BackOtter snapshot on the BSDs and illumos takes off the ACLs, file
+  flags and system attributes a node hasn't got, so `--exact` settles
+  there; FreeBSD symlinks keep their own ACLs; an illumos extended
+  attribute gets an owner only where the restore sets owners. A backup of
+  a source that holds `$TMPDIR` leaves its own links' directory out, and
+  `restore --delete` keeps it. `--clone-from` refuses a directory inside
+  the restore's destination. The repository format is unchanged.
 
 ## Building
 
@@ -389,7 +403,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.14.0+backotter.1) and rustic_core's walkdir (see
+names (`bko_core`, now 0.14.0+backotter.2) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -405,7 +419,7 @@ rustic_core's `backotter` branch moves:
 2. Check `git diff Cargo.lock`: only rustic-rs's version and the
    rustic_core and walkdir entries should change. Revert anything else
    cargo re-resolved (windows-sys and getrandom, for each of
-   0.11.4+backotter.19 to .22 and for 0.12.0+backotter.1),
+   0.11.4+backotter.19 to .22 and for 0.12.0+backotter.1 and .2),
    and check that `cargo metadata --locked` takes the lock.
 3. Commit Cargo.lock.
 4. When rustic_core's version changes, change `bko_core` in
