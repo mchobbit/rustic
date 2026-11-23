@@ -174,9 +174,10 @@ defaults stay stock rustic's, and BackOtter passes the options:
   soon as it creates the file, while it is empty; a directory that was
   there, the destination too, loses its options until then, so that the
   entries made in it inherit none, and a restore that stops before, on an
-  error or an interrupt, puts them back); `--dry-run-warmup` without `--dry-run` plans as `--dry-run`
-  does, changing nothing in the destination; onto another file system they are one warning per
-  restore. A dense restore leaves XFS's preallocated flag (`p`) on the
+  error or an interrupt, puts them back); onto another file system they
+  are one warning per restore. `--dry-run-warmup` without `--dry-run`
+  plans as `--dry-run` does, changing nothing in the destination. A dense
+  restore leaves XFS's preallocated flag (`p`) on the
   files it preallocates, as restic's does (see BACKOTTER.md in
   rustic_core).
 - `backup` reads files with holes by their data extents (`SEEK_DATA`,
@@ -400,8 +401,8 @@ rustic_core's `backotter` branch moves:
    GIT_CONFIG_VALUE_0=https://github.com/mchobbit/rustic_core.git`.
 2. Check `git diff Cargo.lock`: only rustic-rs's version and the
    rustic_core and walkdir entries should change. Revert anything else
-   cargo re-resolved (windows-sys and getrandom, for each of .19 to .22
-   and for 0.12.0+backotter.1),
+   cargo re-resolved (windows-sys and getrandom, for each of
+   0.11.4+backotter.19 to .22 and for 0.12.0+backotter.1),
    and check that `cargo metadata --locked` takes the lock.
 3. Commit Cargo.lock.
 4. When rustic_core's version changes, change `bko_core` in
@@ -464,7 +465,8 @@ such as `cross`. AlpineBSD runs the NetBSD binary.
 DragonFly's own Rust (dports) is too old for rustic, and
 x86_64-unknown-dragonfly is a tier 3 target without a prebuilt standard
 library: build it with nightly and `-Zbuild-std`, against a sysroot and
-linker for DragonFly. Cargo.lock has rustix 1.1.6 rather than 1.1.4 for it:
+linker for DragonFly. It needs rustix 1.1.6 or later, which v0.12.0's own
+Cargo.lock has (on v0.11.4, whose lock had 1.1.4, the fork pinned it):
 1.1.4 wants source-specific multicast socket options for DragonFly that
 libc doesn't have there, and doesn't build.
 
@@ -545,17 +547,22 @@ new rustic uses, then:
     git fetch upstream --tags
     git rebase --onto vNEW vOLD backotter
     # set Cargo.toml's version to "NEW+backotter.1"
-    cargo update -p rustic_core --precise SHA   # as in "Building"
+    cargo update -p rustic_core -p walkdir   # not --precise; see below
+    # check that Cargo.lock names SHA, rustic_core's commit, for both, and
+    # revert what else cargo re-resolved, as in "Building", step 2
     # set bko_core in build-backotter.sh to rustic_core's new version
     git push --force-with-lease origin backotter
 
 In the rebase, take the new release's Cargo.lock where ours conflicts (a
 lock-only commit is then left empty, and dropped), and give a conflicting
 version line `NEW+backotter.N`. After it the lock has crates.io's
-rustic_core, which `--precise SHA` can't take (it wants a version there):
-with rustic_core's `backotter` branch at SHA in the clone that
-`url.CLONE.insteadOf` names ("Building"), run `cargo update -p rustic_core
--p walkdir`, which takes the patch, and check that the lock names SHA. Then
-revert the rest of what cargo re-resolved, as in "Building" (for v0.12.0:
-windows-sys 0.61.2 to 0.52.0 and getrandom 0.3.4 to 0.4.3 in dependency
-lists), and check `cargo metadata --locked`.
+rustic_core, which "Building"'s `cargo update -p rustic_core --precise SHA`
+can't take (it wants a version there; `--precise SHA` is for the later
+moves, once the lock names the git source). So the block runs `cargo
+update -p rustic_core -p walkdir`, which takes the patch at the branch's
+tip: have rustic_core's `backotter` branch at SHA there, on GitHub or,
+until it is pushed, in the clone that `url.CLONE.insteadOf` names (the
+environment of "Building", step 1), and check that the lock names SHA.
+Then revert the rest of what cargo re-resolved, as in "Building" (for
+v0.12.0: windows-sys 0.61.2 to 0.52.0 and getrandom 0.3.4 to 0.4.3 in
+dependency lists), and check `cargo metadata --locked`.
