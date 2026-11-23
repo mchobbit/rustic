@@ -50,7 +50,10 @@ than merged.
   empty /tmp or a freshly booted server's /tmp holding nothing but empty
   `.X11-unix`, `.ICE-unix` and `systemd-private-*/tmp` directories
   (`rustic_core::restore_target_is_fresh`, looked at before the restore
-  starts).
+  starts). Not so with `--exact` or `--target-metadata` (both below):
+  either gives the destination the subfolder's own metadata whether it is
+  fresh or not, so `restore --exact latest:/root /tmp` gives /tmp /root's
+  owner, mode, times, extended attributes, ACLs and flags.
 - `restore --exact` and `--clone-from PATH=DIR` (only with `--exact`), for
   bko-holt load's shared btrfs snapshots: rustic_core does the work
   (`commands/restore/exact.rs`; see BACKOTTER.md there, with the known
@@ -79,6 +82,19 @@ than merged.
   again). Don't mount a NetBSD destination `noatime`: its FFS then takes
   no atime from `utimensat(2)` and says nothing, so every restored atime
   is lost there.
+- `restore --target-metadata`: the destination gets the metadata of the
+  subfolder restored (`SNAP:subfolder`), set last, as any restored
+  directory's, even when it isn't fresh (above). For bko-holt load's main
+  restore, whose target already holds the system's other subvolumes and so
+  isn't fresh, and whose root must still get the backed-up root's owner,
+  mode, times, extended attributes (its SELinux label), ACLs and flags.
+  `--exact` does the same without it, and sets the destination's metadata
+  only where it differs. The option does nothing, and says nothing, where
+  the snapshot has no directory node to take the metadata from: for a
+  whole snapshot (`SNAP` without `:subfolder`, whose root has none), and
+  for a path that is a file. The subfolder's node goes first in what
+  rustic_core restores, as the destination itself, with an empty path
+  (`src/commands/restore.rs`); the TUI's restore has no such option.
 - `restore` (and the TUI's) passes the snapshot's origin to rustic_core
   (`RestoreOptions::origin`, from its program version): in a snapshot of
   BackOtter's restic or rustic (`+backotter`) a node's missing attributes
