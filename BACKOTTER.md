@@ -275,8 +275,21 @@ defaults stay stock rustic's, and BackOtter passes the options:
   `[backup]` hooks, except the source-specific hooks of an incomplete
   snapshot, which was saved, and run their after hooks; an interrupt runs
   the global failed and finally hooks, not the after ones, and once it is
-  taken the main thread runs no command-level hooks (`hooks.use_with`
-  stops it: `halt_if_interrupted` in `src/application.rs`). Unlike
+  taken the main thread starts no command-level hook command and no
+  command: it stops before the next command of a hook list
+  (`Hooks::run_all`), and after a `run-before` list and after the command
+  whatever they returned (`hooks.use_with`; `halt_if_interrupted` and
+  `unless_interrupted` in `src/application.rs`, which let the thread that
+  shuts rustic down through, for its global hooks). A hook command that is
+  running then finishes first: a SIGTERM sent to rustic alone doesn't
+  reach it. Where the interrupt ends the hook's command too (Ctrl-C at a
+  terminal), the main thread can see that command fail a moment before the
+  interrupt is taken, and then still starts that level's failed hooks.
+  0.12.0+backotter.1 stopped only before a `run-before` list and after
+  the command: an interrupt during a `run-before` hook let the rest of its
+  list and the command start beside the global failed hooks, or, the hook
+  failing, that level's failed and finally hooks
+  (`tests/strict_exit_interrupt.rs`). Unlike
   restic, which cancels what is under way, a backup's snapshot whose save
   was already under way while the failed hooks run can still be written
   (then the run exits 130 with that snapshot saved). Off by default:

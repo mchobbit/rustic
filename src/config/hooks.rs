@@ -75,6 +75,9 @@ impl Hooks {
         let _ = env.insert("RUSTIC_HOOK_TYPE".to_string(), what.to_string());
 
         for cmd in cmds {
+            // BackOtter: under `--strict-exit`, no hook command starts on the
+            // main thread once an interrupt is taken as a failure.
+            crate::application::halt_if_interrupted();
             cmd.run(context, what, &env)?;
         }
 
@@ -103,33 +106,31 @@ impl Hooks {
     /// and `run_finally` which must run after. However, they already log a warning
     /// or error depending on the `on_failure` setting.
     ///
-    /// BackOtter: under `--strict-exit`, none of these hooks runs once an
-    /// interrupt has been taken as a failure (its thread runs the global
-    /// failed hooks and exits 130): neither before `f`, nor after it.
+    /// BackOtter: under `--strict-exit`, once an interrupt has been taken as a
+    /// failure (its thread runs the global failed hooks and exits 130), the
+    /// main thread starts none of these hooks' commands, nor `f`: it stops
+    /// for good before the next command of a hook list (`run_all`), and here
+    /// after `run_before` and after `f` (`unless_interrupted`), whatever they
+    /// returned. A hook command that is running then finishes first.
     pub fn use_with<T>(&self, f: impl FnOnce() -> Result<T>) -> Result<T> {
-        crate::application::halt_if_interrupted();
-        match self.run_before() {
-            Ok(()) => {
-                let result = f();
-                crate::application::halt_if_interrupted();
-                match result {
-                    Ok(result) => match self.run_after() {
-                        Ok(()) => {
-                            self.run_finally()?;
-                            Ok(result)
-                        }
-                        Err(err_after) => {
-                            _ = self.run_finally();
-                            Err(err_after)
-                        }
-                    },
-                    Err(err_f) => {
-                        _ = self.run_failed();
-                        _ = self.run_finally();
-                        Err(err_f)
+        match crate::application::unless_interrupted(self.run_before()) {
+            Ok(()) => match crate::application::unless_interrupted(f()) {
+                Ok(result) => match self.run_after() {
+                    Ok(()) => {
+                        self.run_finally()?;
+                        Ok(result)
                     }
+                    Err(err_after) => {
+                        _ = self.run_finally();
+                        Err(err_after)
+                    }
+                },
+                Err(err_f) => {
+                    _ = self.run_failed();
+                    _ = self.run_finally();
+                    Err(err_f)
                 }
-            }
+            },
             Err(err_before) => {
                 _ = self.run_failed();
                 _ = self.run_finally();

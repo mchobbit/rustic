@@ -33,6 +33,13 @@ static ENDED_BY_INTERRUPT: AtomicBool = AtomicBool::new(false);
 /// command-level hooks after it ([`halt_if_interrupted`]).
 static INTERRUPTED: AtomicBool = AtomicBool::new(false);
 
+thread_local! {
+    /// BackOtter: set on the thread that shuts rustic down (the first to get
+    /// there under `--strict-exit`): it runs the global hooks, so
+    /// [`halt_if_interrupted`] never stops it.
+    static SHUTS_DOWN: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
 /// BackOtter: the running command is one an interrupt ends as it is meant
 /// to: under `--strict-exit` too, the interrupt then exits 0 and runs the
 /// after hooks, as BackOtter's restic's `mount` exits 0 on one.
@@ -44,13 +51,35 @@ pub(crate) fn ended_by_interrupt() {
 /// failure, the main thread stops here for good (the interrupt's thread
 /// runs the failed hooks and exits 130), so that no command-level hooks run
 /// after the interrupt, as BackOtter's restic runs none of its own after a
-/// cancel. Without the option this does nothing.
+/// cancel. Without the option this does nothing. The thread that shuts
+/// rustic down goes on ([`must_halt`]): its global hooks come through here
+/// too (`Hooks::run_all`).
 pub(crate) fn halt_if_interrupted() {
-    if INTERRUPTED.load(Ordering::SeqCst) {
+    if must_halt(INTERRUPTED.load(Ordering::SeqCst), SHUTS_DOWN.get()) {
         loop {
             std::thread::park();
         }
     }
+}
+
+// BackOtter (the next two functions).
+/// Whether a thread stops in [`halt_if_interrupted`]: once an interrupt is
+/// taken as a failure (`interrupted`), unless the thread is the one shutting
+/// rustic down (`shuts_down`), which is the interrupt's own thread, or the
+/// main thread where its own shutdown came first; the other of the two
+/// waits in `shutdown_with_exitcode`, so stopping this one too would hang
+/// rustic.
+pub(crate) const fn must_halt(interrupted: bool, shuts_down: bool) -> bool {
+    interrupted && !shuts_down
+}
+
+/// Gives `value` as it is, after [`halt_if_interrupted`]: for a result that
+/// mustn't be acted on once an interrupt is taken (`Hooks::use_with`'s
+/// `run_before` and its command), in a hunk that leaves upstream's lines as
+/// they are.
+pub(crate) fn unless_interrupted<T>(value: T) -> T {
+    halt_if_interrupted();
+    value
 }
 
 /// BackOtter: how an interrupt (SIGINT, SIGTERM, SIGHUP) shuts rustic down:
@@ -199,6 +228,8 @@ impl Application for RusticApp {
                 std::thread::park();
             }
         }
+        // BackOtter: this thread runs the global hooks below, interrupt or not.
+        SHUTS_DOWN.set(true);
         let hooks = &RUSTIC_APP.config().global.hooks;
         match shutdown {
             Shutdown::Crash => _ = hooks.run_failed(),
@@ -225,5 +256,23 @@ mod tests {
         // mount, webdav: an interrupt is how they end.
         assert!(matches!(interrupt_shutdown(false, true), (Shutdown::Graceful, 0)));
         assert!(matches!(interrupt_shutdown(true, true), (Shutdown::Graceful, 0)));
+    }
+
+    // Only an interrupt taken as a failure stops a thread, and never the
+    // one that runs the shutdown's global hooks.
+    #[test]
+    fn only_other_threads_halt_after_an_interrupt() {
+        assert!(!must_halt(false, false));
+        assert!(!must_halt(false, true));
+        assert!(must_halt(true, false));
+        assert!(!must_halt(true, true));
+    }
+
+    // Without an interrupt (none is taken in the unit tests' process) a
+    // result passes through as it is.
+    #[test]
+    fn unless_interrupted_passes_its_value_through() {
+        assert_eq!(unless_interrupted(Ok::<_, ()>(7)), Ok(7));
+        assert_eq!(unless_interrupted(Err::<(), _>("failed")), Err("failed"));
     }
 }
