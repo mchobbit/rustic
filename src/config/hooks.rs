@@ -111,7 +111,8 @@ impl Hooks {
     /// main thread starts none of these hooks' commands, nor `f`: it stops
     /// for good before the next command of a hook list (`run_all`), and here
     /// after `run_before` and after `f` (`unless_interrupted`), whatever they
-    /// returned. A hook command that is running then finishes first.
+    /// returned. A hook command that is running then is not stopped, and
+    /// nothing waits for it: it may outlive rustic.
     pub fn use_with<T>(&self, f: impl FnOnce() -> Result<T>) -> Result<T> {
         match crate::application::unless_interrupted(self.run_before()) {
             Ok(()) => match crate::application::unless_interrupted(f()) {

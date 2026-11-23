@@ -298,10 +298,13 @@ defaults stay stock rustic's, and BackOtter passes the options:
   whatever they returned (`hooks.use_with`; `halt_if_interrupted` and
   `unless_interrupted` in `src/application.rs`, which let the thread that
   shuts rustic down through, for its global hooks). A hook command that is
-  running then finishes first: a SIGTERM sent to rustic alone doesn't
-  reach it. Where the interrupt ends the hook's command too (Ctrl-C at a
-  terminal), the main thread can see that command fail a moment before the
-  interrupt is taken, and then still starts that level's failed hooks.
+  running then is not stopped, and nothing waits for it: a SIGTERM sent to
+  rustic alone doesn't reach it, the interrupt's thread runs the global
+  failed and finally hooks beside it and exits, and the command may
+  outlive rustic. Where the interrupt ends the hook's command too (Ctrl-C
+  at a terminal), the main thread can see that command fail a moment
+  before the interrupt is taken, and then still starts that level's failed
+  hooks.
   0.12.0+backotter.1 stopped only before a `run-before` list and after
   the command: an interrupt during a `run-before` hook let the rest of its
   list and the command start beside the global failed hooks, or, the hook
