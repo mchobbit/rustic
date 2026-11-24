@@ -396,6 +396,12 @@ defaults stay stock rustic's, and BackOtter passes the options:
   a source that holds `$TMPDIR` leaves its own links' directory out, and
   `restore --delete` keeps it. `--clone-from` refuses a directory inside
   the restore's destination. The repository format is unchanged.
+- Since 0.12.0+backotter.3 (rustic_core 0.14.0+backotter.3): restoring a
+  BackOtter snapshot on Linux takes off the inode flags (`chattr(1)`), ZFS
+  DOS flags and FAT attributes a node hasn't got, so `--exact` settles
+  there too (ForkAudit1 G4-03's Linux half; rustic_core's BACKOTTER.md
+  says which flags can't go and stay with a warning). Nothing changed in
+  rustic itself.
 
 ## Building
 
@@ -403,7 +409,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.14.0+backotter.2) and rustic_core's walkdir (see
+names (`bko_core`, now 0.14.0+backotter.3) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -419,7 +425,7 @@ rustic_core's `backotter` branch moves:
 2. Check `git diff Cargo.lock`: only rustic-rs's version and the
    rustic_core and walkdir entries should change. Revert anything else
    cargo re-resolved (windows-sys and getrandom, for each of
-   0.11.4+backotter.19 to .22 and for 0.12.0+backotter.1 and .2),
+   0.11.4+backotter.19 to .22 and for 0.12.0+backotter.1 to .3),
    and check that `cargo metadata --locked` takes the lock.
 3. Commit Cargo.lock.
 4. When rustic_core's version changes, change `bko_core` in
