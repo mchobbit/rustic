@@ -402,6 +402,14 @@ defaults stay stock rustic's, and BackOtter passes the options:
   there too (ForkAudit1 G4-03's Linux half; rustic_core's BACKOTTER.md
   says which flags can't go and stay with a warning). Nothing changed in
   rustic itself.
+- Since 0.12.0+backotter.4 (rustic_core 0.14.0+backotter.4): a restore
+  onto FAT under Linux 7.2, which reports casefolding (`F`) on every FAT
+  file and directory and can't take it off, no longer warns
+  "casefolding (F) not restored" for each directory whose node hasn't got
+  it (.3's regression: every restore onto FAT warned for a directory that
+  came from another file system). Casefolding a file system could change
+  but didn't (a directory with entries) and every flag a node has that
+  couldn't be set still warn. Nothing changed in rustic itself.
 
 ## Building
 
@@ -409,7 +417,7 @@ defaults stay stock rustic's, and BackOtter passes the options:
                                           # musl on a glibc Linux
 
 It refuses to build unless Cargo.lock pins rustic_core at the version it
-names (`bko_core`, now 0.14.0+backotter.3) and rustic_core's walkdir (see
+names (`bko_core`, now 0.14.0+backotter.4) and rustic_core's walkdir (see
 BACKOTTER.md there). `[patch.crates-io]` in Cargo.toml takes both from
 rustic_core's `backotter` branch, and Cargo.lock pins a commit of it. After
 rustic_core's `backotter` branch moves:
@@ -425,7 +433,7 @@ rustic_core's `backotter` branch moves:
 2. Check `git diff Cargo.lock`: only rustic-rs's version and the
    rustic_core and walkdir entries should change. Revert anything else
    cargo re-resolved (windows-sys and getrandom, for each of
-   0.11.4+backotter.19 to .22 and for 0.12.0+backotter.1 to .3),
+   0.11.4+backotter.19 to .22 and for 0.12.0+backotter.1 to .4),
    and check that `cargo metadata --locked` takes the lock.
 3. Commit Cargo.lock.
 4. When rustic_core's version changes, change `bko_core` in
